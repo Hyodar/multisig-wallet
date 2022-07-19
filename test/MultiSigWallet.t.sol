@@ -27,7 +27,23 @@ contract MultisigWalletTest is Test {
         assertEq(multisigWallet.requiredApprovals(), REQUIRED_APPROVALS);
     }
 
-    function testCannotRequireMoreApprovalsThanMembers() public {
+    function testCannotDeployWithEmptyMembersList() public {
+        address[] memory _members = new address[](0);
+
+        vm.expectRevert(
+            "There should be at least one member and at least one approval should be required"
+        );
+        new MultisigWallet(_members, REQUIRED_APPROVALS);
+    }
+
+    function testCannotDeployWithNoRequiredApprovals() public {
+        vm.expectRevert(
+            "There should be at least one member and at least one approval should be required"
+        );
+        new MultisigWallet(members, 0);
+    }
+
+    function testCannotDeployRequiringMoreApprovalsThanMembers() public {
         uint256 requiredApprovals = MEMBER_COUNT + 1;
 
         vm.expectRevert(
