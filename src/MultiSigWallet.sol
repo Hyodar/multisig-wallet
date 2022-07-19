@@ -9,6 +9,10 @@ contract MultisigWallet {
 
     constructor(address[] memory _members, uint256 _requiredApprovals) {
         require(
+            _members.length != 0 && _requiredApprovals != 0,
+            "There should be at least one member and at least one approval should be required"
+        );
+        require(
             _requiredApprovals <= _members.length,
             "Required approvals should not be greater than the amount of members"
         );
