@@ -6,31 +6,48 @@ import "forge-std/Test.sol";
 import "../src/MultisigWallet.sol";
 
 contract MultisigWalletTest is Test {
-    function setUp() public {}
+    event Deposit(address indexed from, uint256 value);
 
-    function testConstructorParametersLoaded() public {
-        uint256 memberCount = 10;
-        uint256 requiredApprovals = 2;
-        address[] memory members = new address[](memberCount);
+    uint256 constant MEMBER_COUNT = 10;
+    uint256 constant REQUIRED_APPROVALS = 7;
+    address[] members;
 
-        for (uint160 i = 0; i < memberCount; i++) {
-            members[i] = address(i);
+    MultisigWallet multisigWallet;
+
+    function setUp() public {
+        for (uint160 i = 0; i < MEMBER_COUNT; i++) {
+            members.push(address(i));
         }
 
-        MultisigWallet multisigWallet =
-            new MultisigWallet(members, requiredApprovals);
+        multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
+    }
 
+    function testConstructorParametersLoaded() public {
         assertEq(multisigWallet.getMembers(), members);
-        assertEq(multisigWallet.requiredApprovals(), requiredApprovals);
+        assertEq(multisigWallet.requiredApprovals(), REQUIRED_APPROVALS);
     }
 
     function testCannotRequireMoreApprovalsThanMembers() public {
-        uint256 requiredApprovals = 2;
-        address[] memory members = new address[](requiredApprovals - 1);
+        uint256 requiredApprovals = MEMBER_COUNT + 1;
 
         vm.expectRevert(
             "Required approvals should not be greater than the amount of members"
         );
         new MultisigWallet(members, requiredApprovals);
+    }
+
+    function testEtherDeposit() public {
+        uint256 value = 10 ether;
+        vm.deal(address(this), value);
+
+        uint256 previousBalance = address(multisigWallet).balance;
+
+        vm.expectEmit(true, false, false, true);
+        emit Deposit(address(this), value);
+
+        (bool success,) = address(multisigWallet).call{value: value}("");
+        assertTrue(success);
+
+        assertEq(address(multisigWallet).balance, previousBalance + value);
     }
 }
