@@ -2,6 +2,8 @@
 pragma solidity ^0.8.15;
 
 contract MultisigWallet {
+    event Deposit(address indexed from, uint256 value);
+
     address[] public members;
     uint256 public immutable requiredApprovals;
 
@@ -13,6 +15,10 @@ contract MultisigWallet {
 
         members = _members;
         requiredApprovals = _requiredApprovals;
+    }
+
+    receive() external payable {
+        emit Deposit(msg.sender, msg.value);
     }
 
     function getMembers() public view returns (address[] memory) {
