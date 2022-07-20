@@ -9,8 +9,8 @@ abstract contract MembershipManager {
     MemberList.List internal _members;
     uint256 public requiredApprovals;
 
-    event MemberAdded(address account);
-    event MemberRemoved(address account);
+    event MemberAdded(address indexed account);
+    event MemberRemoved(address indexed account);
     event RequiredApprovalsChanged(uint256 previous, uint256 current);
 
     modifier onlyWallet() {
@@ -31,35 +31,22 @@ abstract contract MembershipManager {
     }
 
     function addMember(address account) public onlyWallet {
-        require(_members.add(account));
-
-        emit MemberAdded(account);
+        _addMember(account);
     }
 
-    function removeMember(address account)
-        public
-        onlyWallet
-        validSetup(_members.length() - 1, requiredApprovals)
-    {
-        require(_members.remove(account));
-
-        emit MemberRemoved(account);
+    function removeMember(address account) public onlyWallet {
+        _removeMember(account);
     }
 
     function replaceMember(address from, address to) public onlyWallet {
-        require(_members.replace(from, to));
-
-        emit MemberRemoved(from);
-        emit MemberAdded(to);
+        _replaceMember(from, to);
     }
 
     function setRequiredApprovals(uint256 _requiredApprovals)
         public
         onlyWallet
-        validSetup(_members.length(), _requiredApprovals)
     {
-        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
-        requiredApprovals = _requiredApprovals;
+        _setRequiredApprovals(_requiredApprovals);
     }
 
     function getMembers() public view returns (address[] memory) {
@@ -74,18 +61,46 @@ abstract contract MembershipManager {
         return _members.length();
     }
 
+    function _addMember(address account) internal {
+        require(_members.add(account));
+
+        emit MemberAdded(account);
+    }
+
+    function _removeMember(address account)
+        internal
+        validSetup(_members.length() - 1, requiredApprovals)
+    {
+        require(_members.remove(account));
+
+        emit MemberRemoved(account);
+    }
+
+    function _replaceMember(address from, address to) internal {
+        require(_members.replace(from, to));
+
+        emit MemberRemoved(from);
+        emit MemberAdded(to);
+    }
+
+    function _setRequiredApprovals(uint256 _requiredApprovals)
+        internal
+        validSetup(_members.length(), _requiredApprovals)
+    {
+        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
+        requiredApprovals = _requiredApprovals;
+    }
+
     function _setupMembership(
         address[] memory members,
         uint256 _requiredApprovals
     )
         internal
-        validSetup(members.length, _requiredApprovals)
     {
         for (uint256 i = 0; i < members.length; i++) {
-            require(_members.add(members[i]));
+            _addMember(members[i]);
         }
 
-        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
-        requiredApprovals = _requiredApprovals;
+        _setRequiredApprovals(_requiredApprovals);
     }
 }
