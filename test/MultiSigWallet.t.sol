@@ -15,7 +15,7 @@ contract MultisigWalletTest is Test {
     MultisigWallet multisigWallet;
 
     function setUp() public {
-        for (uint160 i = 0; i < MEMBER_COUNT; i++) {
+        for (uint160 i = 1; i <= MEMBER_COUNT; i++) {
             members.push(address(i));
         }
 
@@ -25,6 +25,13 @@ contract MultisigWalletTest is Test {
     function testConstructorParametersLoaded() public {
         assertEq(multisigWallet.getMembers(), members);
         assertEq(multisigWallet.requiredApprovals(), REQUIRED_APPROVALS);
+    }
+
+    function testCannotDeployWithZeroAddressMember() public {
+        address[] memory _members = new address[](1);
+
+        vm.expectRevert();
+        new MultisigWallet(_members, 1);
     }
 
     function testCannotDeployWithEmptyMembersList() public {
