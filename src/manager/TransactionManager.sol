@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "./MemberList.sol";
+import "../library/MemberList.sol";
 import "./MembershipManager.sol";
 
 /// @title Multisig transaction proposal and execution logic

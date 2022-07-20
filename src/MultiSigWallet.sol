@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "./TransactionManager.sol";
-import "./FallbackManager.sol";
+import "./manager/TransactionManager.sol";
+import "./manager/FallbackManager.sol";
 
 /// @title A cool multisig wallet
 /// @author Hyodar
