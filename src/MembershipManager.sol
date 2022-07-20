@@ -11,7 +11,7 @@ abstract contract MembershipManager {
 
     event MemberAdded(address account);
     event MemberRemoved(address account);
-    event RequiredApprovalsChanged(uint256 value);
+    event RequiredApprovalsChanged(uint256 previous, uint256 current);
 
     modifier onlyWallet() {
         require(msg.sender == address(this), "Wallet-specific operation");
@@ -58,8 +58,8 @@ abstract contract MembershipManager {
         onlyWallet
         validSetup(_members.length(), _requiredApprovals)
     {
+        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
         requiredApprovals = _requiredApprovals;
-        emit RequiredApprovalsChanged(_requiredApprovals);
     }
 
     function getMembers() public view returns (address[] memory) {
@@ -85,7 +85,7 @@ abstract contract MembershipManager {
             require(_members.add(members[i]));
         }
 
+        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
         requiredApprovals = _requiredApprovals;
-        emit RequiredApprovalsChanged(_requiredApprovals);
     }
 }
