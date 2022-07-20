@@ -16,24 +16,18 @@ library MemberList {
         return list._memberOrder[account] != 0;
     }
 
-    function add(List storage list, address account) internal returns (bool) {
-        if (contains(list, account) || account == address(0)) {
-            return false;
-        }
+    function add(List storage list, address account) internal {
+        require(!contains(list, account), "Account is already a member");
+        require(account != address(0), "Zero address can't be added as member");
 
         list._members.push(account);
         list._memberOrder[account] = list._members.length;
-
-        return true;
     }
 
-    function remove(List storage list, address account)
-        internal
-        returns (bool)
-    {
+    function remove(List storage list, address account) internal {
         uint256 removedMemberOrder = list._memberOrder[account];
 
-        if (removedMemberOrder == 0) return false;
+        require(removedMemberOrder != 0, "Account is not a member");
 
         uint256 memberCount = list._members.length;
 
@@ -53,20 +47,14 @@ library MemberList {
 
         list._members.pop();
         delete list._memberOrder[account];
-
-        return true;
     }
 
-    function replace(List storage list, address from, address to)
-        internal
-        returns (bool)
-    {
-        uint256 replacedMemberOrder = list._memberOrder[from];
+    function replace(List storage list, address from, address to) internal {
+        require(!contains(list, to), "Account is already a member");
+        require(to != address(0), "Zero address can't be added as member");
 
-        if (replacedMemberOrder == 0 || contains(list, to) || to == address(0))
-        {
-            return false;
-        }
+        uint256 replacedMemberOrder = list._memberOrder[from];
+        require(replacedMemberOrder != 0, "Replaced account is not a member");
 
         unchecked {
             // replacedMemberOrder > 0
@@ -75,8 +63,6 @@ library MemberList {
 
         list._memberOrder[to] = replacedMemberOrder;
         delete list._memberOrder[from];
-
-        return true;
     }
 
     function at(List storage list, uint256 index)

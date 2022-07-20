@@ -43,7 +43,7 @@ contract MultisigWalletTest is Test {
     function testCannotDeployWithZeroAddressMember() public {
         address[] memory _members = new address[](1);
 
-        vm.expectRevert();
+        vm.expectRevert("Zero address can't be added as member");
         new MultisigWallet(_members, 1);
     }
 
@@ -93,13 +93,13 @@ contract MultisigWalletTest is Test {
     }
 
     function testCannotAddZeroAddressMember() public {
-        vm.expectRevert();
+        vm.expectRevert("Zero address can't be added as member");
         vm.prank(address(multisigWallet));
         multisigWallet.addMember(address(0));
     }
 
     function testCannotAddExistingMember() public {
-        vm.expectRevert();
+        vm.expectRevert("Account is already a member");
         vm.prank(address(multisigWallet));
         multisigWallet.addMember(members[0]);
     }
@@ -122,7 +122,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testCannotRemoveUnexistingMember() public {
-        vm.expectRevert();
+        vm.expectRevert("Account is not a member");
         vm.prank(address(multisigWallet));
         multisigWallet.removeMember(address(0xf00d));
     }
@@ -165,19 +165,19 @@ contract MultisigWalletTest is Test {
     }
 
     function testCannotReplaceUnexistingMember() public {
-        vm.expectRevert();
+        vm.expectRevert("Replaced account is not a member");
         vm.prank(address(multisigWallet));
         multisigWallet.replaceMember(address(0xdef1), address(0xf00d));
     }
 
     function testCannotReplaceMemberWithMember() public {
-        vm.expectRevert();
+        vm.expectRevert("Account is already a member");
         vm.prank(address(multisigWallet));
         multisigWallet.replaceMember(members[0], members[1]);
     }
 
     function testCannotReplaceMemberWithZeroAddress() public {
-        vm.expectRevert();
+        vm.expectRevert("Zero address can't be added as member");
         vm.prank(address(multisigWallet));
         multisigWallet.replaceMember(members[0], address(0));
     }

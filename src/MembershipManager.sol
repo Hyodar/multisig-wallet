@@ -67,7 +67,7 @@ abstract contract MembershipManager {
     }
 
     function _addMember(address account) internal {
-        require(_members.add(account));
+        _members.add(account);
 
         emit MemberAdded(account);
     }
@@ -76,13 +76,13 @@ abstract contract MembershipManager {
         internal
         validSetup(_members.length() - 1, requiredApprovals)
     {
-        require(_members.remove(account));
+        _members.remove(account);
 
         emit MemberRemoved(account);
     }
 
     function _replaceMember(address from, address to) internal {
-        require(_members.replace(from, to));
+        _members.replace(from, to);
 
         emit MemberRemoved(from);
         emit MemberAdded(to);
