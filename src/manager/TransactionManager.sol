@@ -189,22 +189,12 @@ abstract contract TransactionManager is MembershipManager {
     /// @dev Can only be called by a member, requires that the proposal
     ///     is still open and already has at least the required approvals
     /// @param transactionId ID of the transaction proposal to be executed
-    function execute(uint256 transactionId, uint256 simulatedGasCost)
+    function execute(uint256 transactionId)
         public
         onlyMember
         proposalOpen(transactionId)
         passedVoting(transactionId)
     {
-        if (simulatedGasCost != 0) {
-            require(
-                gasleft() >= simulatedGasCost, "Not enough gas for execution"
-            );
-            require(
-                address(this).balance >= simulatedGasCost,
-                "Not enough gas for refunding"
-            );
-        }
-
         uint256 previousGas = gasleft();
 
         TransactionProposal storage transaction =
