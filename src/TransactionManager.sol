@@ -26,6 +26,11 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice All transaction proposals ever made in the wallet
     TransactionProposal[] public transactionProposals;
 
+    /// @notice Emitted when a proposal is created by a member
+    /// @param member The address of the member that created the proposal
+    /// @param transactionId The ID of the transaction proposal
+    event ProposalCreated(address indexed member, uint256 indexed transactionId);
+
     /// @notice Emitted when a proposal is approved by a member
     /// @param member The address of the member that approved the proposal
     /// @param transactionId The ID of the transaction proposal being approved
@@ -77,6 +82,42 @@ abstract contract TransactionManager is MembershipManager {
         _;
     }
 
+    /// @notice Opens a transaction for voting
+    /// @dev Can only be called from a member
+    /// @param to Call destination
+    /// @param value Ether value to be sent in the call
+    /// @param data Encoded call data
+    function proposeTransaction(address to, uint256 value, bytes calldata data)
+        public
+        onlyMember
+    {
+        transactionProposals.push(
+            TransactionProposal({to: to, executed: false, value: value, data: data})
+        );
+
+        unchecked {
+            // transactionProposals.length > 0
+            emit ProposalCreated(msg.sender, transactionProposals.length - 1);
+        }
+    }
+
+    /// @notice Opens a transaction for voting and approves it
+    /// @dev Can only be called from a member
+    /// @param to Call destination
+    /// @param value Ether value to be sent in the call
+    /// @param data Encoded call data
+    function proposeAndApprove(address to, uint256 value, bytes calldata data)
+        public
+        onlyMember
+    {
+        proposeTransaction(to, value, data);
+
+        unchecked {
+            // transactionProposals.length > 0
+            approve(transactionProposals.length - 1);
+        }
+    }
+
     /// @notice Approves a transaction proposal
     /// @dev Can only be called from a member, requires that the proposal is
     ///     still open to voting and that the proposal wasn't yet approved by
@@ -107,5 +148,44 @@ abstract contract TransactionManager is MembershipManager {
             "Sender didn't approve this proposal"
         );
         transactionApprovedBy[transactionId][msg.sender] = false;
+    }
+
+    /// @notice Gets the amount of transaction proposals made in this wallet
+    function getTransactionProposalCount() public view returns (uint256) {
+        return transactionProposals.length;
+    }
+
+    /// @notice Gets the members that approved a transaction proposal
+    /// @param transactionId The ID of the transaction proposal
+    function getApprovingMembers(uint256 transactionId)
+        public
+        view
+        returns (address[] memory)
+    {
+        uint256 _memberCount = memberCount();
+        address[] memory _approvingMembers = new address[](_memberCount);
+        uint256 approvals = 0;
+
+        unchecked {
+            // nothing could realistically overflow in here
+            for (uint256 i = 0; i < _memberCount; i++) {
+                address member = _getMember(i);
+
+                if (transactionApprovedBy[transactionId][member]) {
+                    _approvingMembers[approvals++] = member;
+                }
+            }
+        }
+
+        address[] memory approvingMembers = new address[](approvals);
+
+        unchecked {
+            // nothing could realistically overflow in here
+            for (uint256 i = 0; i < approvals; i++) {
+                approvingMembers[i] = _approvingMembers[i];
+            }
+        }
+
+        return approvingMembers;
     }
 }

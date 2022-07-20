@@ -108,6 +108,11 @@ abstract contract MembershipManager {
         return _members.length();
     }
 
+    /// @notice Gets a member from its index
+    function _getMember(uint256 index) internal view returns (address) {
+        return _members.at(index);
+    }
+
     /// @notice Adds an account address to the member list
     /// @dev The account must not be a member and must not be the zero address
     /// @param account The account address to be added
