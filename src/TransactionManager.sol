@@ -97,7 +97,7 @@ abstract contract TransactionManager is MembershipManager {
     /// @dev Can only be called from a member, requires that the proposal is
     ///     still open to voting and that the proposal was already approved by
     ///     this member
-    function revoke(uint256 transactionId)
+    function revokeApproval(uint256 transactionId)
         public
         onlyMember
         proposalOpen(transactionId)
