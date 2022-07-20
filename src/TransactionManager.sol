@@ -39,14 +39,17 @@ abstract contract TransactionManager is MembershipManager {
             }
         }
 
-        require(approvals >= requiredApprovals);
+        require(approvals >= requiredApprovals, "Not enough approvals");
 
         _;
     }
 
     modifier proposalOpen(uint256 transactionId) {
-        require(transactionId < transactions.length);
-        require(!transactions[transactionId].executed);
+        require(transactionId < transactions.length, "Unknown proposal");
+        require(
+            !transactions[transactionId].executed,
+            "This transaction was already executed"
+        );
         _;
     }
 
@@ -55,7 +58,10 @@ abstract contract TransactionManager is MembershipManager {
         onlyMember
         proposalOpen(transactionId)
     {
-        require(!transactionApprovedBy[transactionId][msg.sender]);
+        require(
+            !transactionApprovedBy[transactionId][msg.sender],
+            "Sender already approved this proposal"
+        );
         transactionApprovedBy[transactionId][msg.sender] = true;
     }
 
@@ -64,7 +70,10 @@ abstract contract TransactionManager is MembershipManager {
         onlyMember
         proposalOpen(transactionId)
     {
-        require(transactionApprovedBy[transactionId][msg.sender]);
+        require(
+            transactionApprovedBy[transactionId][msg.sender],
+            "Sender didn't approve this proposal"
+        );
         transactionApprovedBy[transactionId][msg.sender] = false;
     }
 }
