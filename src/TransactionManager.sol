@@ -10,6 +10,12 @@ import "./MembershipManager.sol";
 abstract contract TransactionManager is MembershipManager {
     using MemberList for MemberList.List;
 
+    /// @notice Transaction operation types
+    enum Operation {
+        Call,
+        DelegateCall
+    }
+
     /// @notice Container for transaction proposal information
     /// @member to Destination of the transaction that would be executed
     /// @member executed Flag that indicates whether a transaction has already
@@ -19,6 +25,7 @@ abstract contract TransactionManager is MembershipManager {
     struct TransactionProposal {
         address to;
         bool executed;
+        Operation operation;
         uint256 value;
         bytes data;
     }
@@ -42,7 +49,10 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Emitted when a proposal approval is revoked by a member
     /// @param member The address of the member that revoked its approval
     /// @param transactionId The ID of the previously approved transaction proposal
-    event ProposalRevoked(address indexed member, uint256 indexed transactionId);
+    event ProposalApprovalRevoked(
+        address indexed member,
+        uint256 indexed transactionId
+    );
 
     /// @notice Map that records, per transaction, the approvals of any addresses
     mapping(uint256 => mapping(address => bool)) transactionApprovedBy;
@@ -51,7 +61,7 @@ abstract contract TransactionManager is MembershipManager {
     ///     member approvals are greater than or equal to the required
     ///     approvals)
     /// @dev Expensive operation, O(n)
-    modifier votePassed(uint256 transactionId) {
+    modifier passedVoting(uint256 transactionId) {
         uint256 memberCount = _members.length();
         uint256 approvals = 0;
 
@@ -85,14 +95,26 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Opens a transaction for voting
     /// @dev Can only be called from a member
     /// @param to Call destination
+    /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
     /// @param data Encoded call data
-    function proposeTransaction(address to, uint256 value, bytes calldata data)
+    function proposeTransaction(
+        address to,
+        Operation operation,
+        uint256 value,
+        bytes calldata data
+    )
         public
         onlyMember
     {
         transactionProposals.push(
-            TransactionProposal({to: to, executed: false, value: value, data: data})
+            TransactionProposal({
+                to: to,
+                operation: operation,
+                executed: false,
+                value: value,
+                data: data
+            })
         );
 
         unchecked {
@@ -104,13 +126,19 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Opens a transaction for voting and approves it
     /// @dev Can only be called from a member
     /// @param to Call destination
+    /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
     /// @param data Encoded call data
-    function proposeAndApprove(address to, uint256 value, bytes calldata data)
+    function proposeAndApprove(
+        address to,
+        Operation operation,
+        uint256 value,
+        bytes calldata data
+    )
         public
         onlyMember
     {
-        proposeTransaction(to, value, data);
+        proposeTransaction(to, operation, value, data);
 
         unchecked {
             // transactionProposals.length > 0
@@ -122,6 +150,7 @@ abstract contract TransactionManager is MembershipManager {
     /// @dev Can only be called from a member, requires that the proposal is
     ///     still open to voting and that the proposal wasn't yet approved by
     ///     this member
+    /// @param transactionId ID of the transaction proposal to be approved
     function approve(uint256 transactionId)
         public
         onlyMember
@@ -131,13 +160,17 @@ abstract contract TransactionManager is MembershipManager {
             !transactionApprovedBy[transactionId][msg.sender],
             "Sender already approved this proposal"
         );
+
         transactionApprovedBy[transactionId][msg.sender] = true;
+        emit ProposalApproved(msg.sender, transactionId);
     }
 
     /// @notice Revokes a previous transaction proposal approval
     /// @dev Can only be called from a member, requires that the proposal is
     ///     still open to voting and that the proposal was already approved by
     ///     this member
+    /// @param transactionId ID of the transaction proposal to have the
+    ///      sender's approval revoked
     function revokeApproval(uint256 transactionId)
         public
         onlyMember
@@ -147,7 +180,56 @@ abstract contract TransactionManager is MembershipManager {
             transactionApprovedBy[transactionId][msg.sender],
             "Sender didn't approve this proposal"
         );
+
         transactionApprovedBy[transactionId][msg.sender] = false;
+        emit ProposalApprovalRevoked(msg.sender, transactionId);
+    }
+
+    /// @notice Executes a transaction whose proposal has passed voting
+    /// @dev Can only be called from a member, requires that the proposal
+    ///     is still open and already has at least the required approvals
+    /// @param transactionId ID of the transaction proposal to be executed
+    function execute(uint256 transactionId, uint256 simulatedGasCost)
+        public
+        onlyMember
+        proposalOpen(transactionId)
+        passedVoting(transactionId)
+    {
+        if (simulatedGasCost != 0) {
+            require(
+                gasleft() >= simulatedGasCost, "Not enough gas for execution"
+            );
+            require(
+                address(this).balance >= simulatedGasCost,
+                "Not enough gas for refunding"
+            );
+        }
+
+        uint256 previousGas = gasleft();
+
+        TransactionProposal storage transaction =
+            transactionProposals[transactionId];
+        transaction.executed = true;
+
+        bool success;
+
+        if (transaction.operation == Operation.Call) {
+            (success,) = address(transaction.to).call{
+                value: transaction.value,
+                gas: gasleft()
+            }(transaction.data);
+        } else {
+            (success,) = address(transaction.to).delegatecall{gas: gasleft()}(
+                transaction.data
+            );
+        }
+
+        require(success, "Transaction was not successful");
+
+        // refund msg.sender
+        (success,) = msg.sender.call{value: previousGas - gasleft()}("");
+
+        require(success, "Refund was not successful");
     }
 
     /// @notice Gets the amount of transaction proposals made in this wallet
