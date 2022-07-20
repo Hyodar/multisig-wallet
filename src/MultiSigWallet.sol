@@ -2,15 +2,15 @@
 pragma solidity ^0.8.15;
 
 import "./TransactionManager.sol";
+import "./FallbackManager.sol";
 
-contract MultisigWallet is TransactionManager {
-    event Deposit(address indexed from, uint256 value);
-
+/// @title A cool multisig wallet
+/// @author Hyodar
+/// @notice A contract that basically works as a shared wallet, allowing a
+///     group of members to participate in a form of on-chain quorum to vote
+///     on transactions to be executed by the wallet
+contract MultisigWallet is TransactionManager, FallbackManager {
     constructor(address[] memory members, uint256 requiredApprovals) {
         _setupMembership(members, requiredApprovals);
-    }
-
-    receive() external payable {
-        emit Deposit(msg.sender, msg.value);
     }
 }
