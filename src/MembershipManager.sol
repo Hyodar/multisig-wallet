@@ -86,5 +86,6 @@ abstract contract MembershipManager {
         }
 
         requiredApprovals = _requiredApprovals;
+        emit RequiredApprovalsChanged(_requiredApprovals);
     }
 }
