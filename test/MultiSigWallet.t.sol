@@ -18,6 +18,7 @@ contract MultisigWalletTest is Test {
     MultisigWallet multisigWallet;
 
     function setUp() public {
+        // some assertions that assure the following tests will work as expected
         assertLt(REQUIRED_APPROVALS, MEMBER_COUNT);
         assertGt(MEMBER_COUNT, 0);
         assertGt(REQUIRED_APPROVALS, 0);
@@ -34,6 +35,9 @@ contract MultisigWalletTest is Test {
 
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
     }
+
+    // Constructor
+    // -----------------------------------------------------------------------
 
     function testConstructorParametersLoaded() public {
         assertEq(multisigWallet.getMembers(), members);
@@ -72,6 +76,9 @@ contract MultisigWalletTest is Test {
         new MultisigWallet(members, requiredApprovals);
     }
 
+    // Depositing
+    // -----------------------------------------------------------------------
+
     function testEtherDeposit() public {
         uint256 value = 10 ether;
         vm.deal(address(this), value);
@@ -86,6 +93,9 @@ contract MultisigWalletTest is Test {
 
         assertEq(address(multisigWallet).balance, previousBalance + value);
     }
+
+    // Member addition
+    // -----------------------------------------------------------------------
 
     function testCannotAddMemberIfNotWallet() public {
         vm.expectRevert("Wallet-specific operation");
@@ -116,6 +126,9 @@ contract MultisigWalletTest is Test {
         assertEq(multisigWallet.getMembers(), members);
     }
 
+    // Member removal
+    // -----------------------------------------------------------------------
+
     function testCannotRemoveMemberIfNotWallet() public {
         vm.expectRevert("Wallet-specific operation");
         multisigWallet.removeMember(members[0]);
@@ -127,7 +140,7 @@ contract MultisigWalletTest is Test {
         multisigWallet.removeMember(address(0xf00d));
     }
 
-    function testCannotRemoveMemberIfRequiredApprovalsWouldBeGreaterThanMemberCount(
+    function testCannotRemoveMemberIfRequiredApprovalsWouldGetGreaterThanMemberCount(
     )
         public
     {
@@ -158,6 +171,9 @@ contract MultisigWalletTest is Test {
 
         assertEq(multisigWallet.getMembers(), members);
     }
+
+    // Member replacing
+    // -----------------------------------------------------------------------
 
     function testCannotReplaceMemberIfNotWallet() public {
         vm.expectRevert("Wallet-specific operation");
@@ -196,6 +212,9 @@ contract MultisigWalletTest is Test {
 
         assertEq(multisigWallet.getMembers(), members);
     }
+
+    // Setting required approvals
+    // -----------------------------------------------------------------------
 
     function testCannotSetRequiredApprovalsIfNotWallet() public {
         vm.expectRevert("Wallet-specific operation");
