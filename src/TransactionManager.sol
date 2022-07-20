@@ -9,7 +9,7 @@ import "./MembershipManager.sol";
 /// @notice Manages transactions and provides related utility functions
 abstract contract TransactionManager is MembershipManager {
     using MemberList for MemberList.List;
-    
+
     /// @notice Container for transaction proposal information
     /// @member to Destination of the transaction that would be executed
     /// @member executed Flag that indicates whether a transaction has already
