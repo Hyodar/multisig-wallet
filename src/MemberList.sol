@@ -79,6 +79,14 @@ library MemberList {
         return true;
     }
 
+    function at(List storage list, uint256 index)
+        internal
+        view
+        returns (address)
+    {
+        return list._members[index];
+    }
+
     function values(List storage list)
         internal
         view
