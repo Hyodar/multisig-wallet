@@ -93,7 +93,7 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Opens a transaction for voting
-    /// @dev Can only be called from a member
+    /// @dev Can only be called by a member
     /// @param to Call destination
     /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
@@ -124,7 +124,7 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Opens a transaction for voting and approves it
-    /// @dev Can only be called from a member
+    /// @dev Can only be called by a member
     /// @param to Call destination
     /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
@@ -147,7 +147,7 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Approves a transaction proposal
-    /// @dev Can only be called from a member, requires that the proposal is
+    /// @dev Can only be called by a member, requires that the proposal is
     ///     still open to voting and that the proposal wasn't yet approved by
     ///     this member
     /// @param transactionId ID of the transaction proposal to be approved
@@ -166,7 +166,7 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Revokes a previous transaction proposal approval
-    /// @dev Can only be called from a member, requires that the proposal is
+    /// @dev Can only be called by a member, requires that the proposal is
     ///     still open to voting and that the proposal was already approved by
     ///     this member
     /// @param transactionId ID of the transaction proposal to have the
@@ -186,7 +186,7 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Executes a transaction whose proposal has passed voting
-    /// @dev Can only be called from a member, requires that the proposal
+    /// @dev Can only be called by a member, requires that the proposal
     ///     is still open and already has at least the required approvals
     /// @param transactionId ID of the transaction proposal to be executed
     function execute(uint256 transactionId, uint256 simulatedGasCost)
