@@ -7,6 +7,9 @@ import "../src/MultisigWallet.sol";
 
 contract MultisigWalletTest is Test {
     event Deposit(address indexed from, uint256 value);
+    event MemberAdded(address indexed account);
+    event MemberRemoved(address indexed account);
+    event RequiredApprovalsChanged(uint256 previous, uint256 current);
 
     uint256 constant MEMBER_COUNT = 10;
     uint256 constant REQUIRED_APPROVALS = 7;
@@ -15,9 +18,19 @@ contract MultisigWalletTest is Test {
     MultisigWallet multisigWallet;
 
     function setUp() public {
+        assertLt(REQUIRED_APPROVALS, MEMBER_COUNT);
+        assertGt(MEMBER_COUNT, 0);
+        assertGt(REQUIRED_APPROVALS, 0);
+
         for (uint160 i = 1; i <= MEMBER_COUNT; i++) {
             members.push(address(i));
+
+            vm.expectEmit(true, false, false, true);
+            emit MemberAdded(address(i));
         }
+
+        vm.expectEmit(false, false, false, true);
+        emit RequiredApprovalsChanged(0, REQUIRED_APPROVALS);
 
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
     }
@@ -65,7 +78,7 @@ contract MultisigWalletTest is Test {
 
         uint256 previousBalance = address(multisigWallet).balance;
 
-        vm.expectEmit(true, false, false, true);
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
         emit Deposit(address(this), value);
 
         (bool success,) = address(multisigWallet).call{value: value}("");
@@ -92,6 +105,9 @@ contract MultisigWalletTest is Test {
     }
 
     function testAddMember() public {
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit MemberAdded(address(0xdef1));
+
         vm.prank(address(multisigWallet));
         multisigWallet.addMember(address(0xdef1));
 
@@ -131,6 +147,9 @@ contract MultisigWalletTest is Test {
     }
 
     function testRemoveMember() public {
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit MemberRemoved(members[0]);
+
         vm.prank(address(multisigWallet));
         multisigWallet.removeMember(members[0]);
 
@@ -164,11 +183,50 @@ contract MultisigWalletTest is Test {
     }
 
     function testReplaceMember() public {
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit MemberRemoved(members[0]);
+
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit MemberAdded(address(0xdef1));
+
         vm.prank(address(multisigWallet));
         multisigWallet.replaceMember(members[0], address(0xdef1));
 
         members[0] = address(0xdef1);
 
         assertEq(multisigWallet.getMembers(), members);
+    }
+
+    function testCannotSetRequiredApprovalsIfNotWallet() public {
+        vm.expectRevert("Wallet-specific operation");
+        multisigWallet.setRequiredApprovals(MEMBER_COUNT);
+    }
+
+    function testCannotSetRequiredApprovalsToZero() public {
+        vm.expectRevert(
+            "There should be at least one member and at least one approval should be required"
+        );
+        vm.prank(address(multisigWallet));
+        multisigWallet.setRequiredApprovals(0);
+    }
+
+    function testCannotSetRequiredApprovalsToBeGreaterThanMemberCount()
+        public
+    {
+        vm.expectRevert(
+            "Required approvals should not be greater than the amount of members"
+        );
+        vm.prank(address(multisigWallet));
+        multisigWallet.setRequiredApprovals(MEMBER_COUNT + 1);
+    }
+
+    function testSetRequiredApprovals() public {
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit RequiredApprovalsChanged(REQUIRED_APPROVALS, MEMBER_COUNT - 1);
+
+        vm.prank(address(multisigWallet));
+        multisigWallet.setRequiredApprovals(MEMBER_COUNT - 1);
+
+        assertEq(multisigWallet.requiredApprovals(), MEMBER_COUNT - 1);
     }
 }
