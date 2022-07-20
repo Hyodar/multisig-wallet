@@ -18,6 +18,11 @@ abstract contract MembershipManager {
         _;
     }
 
+    modifier onlyMember() {
+        require(isMember(msg.sender), "Member-specific operation");
+        _;
+    }
+
     modifier validSetup(uint256 _memberCount, uint256 _requiredApprovals) {
         require(
             _memberCount != 0 && _requiredApprovals != 0,
