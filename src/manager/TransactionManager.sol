@@ -226,8 +226,9 @@ abstract contract TransactionManager is MembershipManager {
 
         require(success, "Transaction was not successful");
 
-        // refund msg.sender
-        (success,) = msg.sender.call{value: previousGas - gasleft()}("");
+        // refund msg.sender approximately the eth amount spent
+        (success,) =
+            msg.sender.call{value: (previousGas - gasleft()) * tx.gasprice}("");
 
         require(success, "Refund was not successful");
     }
