@@ -16,15 +16,15 @@ abstract contract TransactionManager is MembershipManager {
     ///     been executed or not
     /// @member value The ether value to be sent in the transaction
     /// @member data The encoded transaction data
-    struct Transaction {
+    struct TransactionProposal {
         address to;
         bool executed;
         uint256 value;
         bytes data;
     }
 
-    /// @notice The transactions array
-    Transaction[] public transactions;
+    /// @notice All transaction proposals ever made in the wallet
+    TransactionProposal[] public transactionProposals;
 
     /// @notice Emitted when a proposal is approved by a member
     /// @param member The address of the member that approved the proposal
@@ -69,9 +69,9 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Checks whether a transaction proposal is still open to voting
     ///     (i.e. it hasn't yet been executed)
     modifier proposalOpen(uint256 transactionId) {
-        require(transactionId < transactions.length, "Unknown proposal");
+        require(transactionId < transactionProposals.length, "Unknown proposal");
         require(
-            !transactions[transactionId].executed,
+            !transactionProposals[transactionId].executed,
             "This transaction was already executed"
         );
         _;
