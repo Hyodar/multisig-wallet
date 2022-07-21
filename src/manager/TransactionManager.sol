@@ -2,6 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "../library/MemberList.sol";
+import "../library/Operation.sol";
 import "./MembershipManager.sol";
 
 /// @title Multisig transaction proposal and execution logic
@@ -9,12 +10,6 @@ import "./MembershipManager.sol";
 /// @notice Manages transactions and provides related utility functions
 abstract contract TransactionManager is MembershipManager {
     using MemberList for MemberList.List;
-
-    /// @notice Transaction operation types
-    enum Operation {
-        Call,
-        DelegateCall
-    }
 
     /// @notice Container for transaction proposal information
     /// @member to Destination of the transaction that would be executed
@@ -29,9 +24,6 @@ abstract contract TransactionManager is MembershipManager {
         uint256 value;
         bytes data;
     }
-
-    /// @notice All transaction proposals ever made in the wallet
-    TransactionProposal[] public transactionProposals;
 
     /// @notice Emitted when a proposal is created by a member
     /// @param member The address of the member that created the proposal
@@ -53,6 +45,9 @@ abstract contract TransactionManager is MembershipManager {
         address indexed member,
         uint256 indexed transactionId
     );
+
+    /// @notice All transaction proposals ever made in the wallet
+    TransactionProposal[] internal _transactionProposals;
 
     /// @notice Map that records, per transaction, the approvals of any addresses
     mapping(uint256 => mapping(address => bool)) transactionApprovedBy;
@@ -84,9 +79,11 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Checks whether a transaction proposal is still open to voting
     ///     (i.e. it hasn't yet been executed)
     modifier proposalOpen(uint256 transactionId) {
-        require(transactionId < transactionProposals.length, "Unknown proposal");
         require(
-            !transactionProposals[transactionId].executed,
+            transactionId < _transactionProposals.length, "Unknown proposal"
+        );
+        require(
+            !_transactionProposals[transactionId].executed,
             "This transaction was already executed"
         );
         _;
@@ -107,7 +104,7 @@ abstract contract TransactionManager is MembershipManager {
         public
         onlyMember
     {
-        transactionProposals.push(
+        _transactionProposals.push(
             TransactionProposal({
                 to: to,
                 operation: operation,
@@ -118,8 +115,8 @@ abstract contract TransactionManager is MembershipManager {
         );
 
         unchecked {
-            // transactionProposals.length > 0
-            emit ProposalCreated(msg.sender, transactionProposals.length - 1);
+            // _transactionProposals.length > 0
+            emit ProposalCreated(msg.sender, _transactionProposals.length - 1);
         }
     }
 
@@ -141,8 +138,8 @@ abstract contract TransactionManager is MembershipManager {
         proposeTransaction(to, operation, value, data);
 
         unchecked {
-            // transactionProposals.length > 0
-            approve(transactionProposals.length - 1);
+            // _transactionProposals.length > 0
+            approve(_transactionProposals.length - 1);
         }
     }
 
@@ -198,12 +195,12 @@ abstract contract TransactionManager is MembershipManager {
         uint256 previousGas = gasleft();
 
         TransactionProposal storage transaction =
-            transactionProposals[transactionId];
+            _transactionProposals[transactionId];
         transaction.executed = true;
 
         bool success;
 
-        if (transaction.operation == Operation.Call) {
+        if (transaction.operation == Operation.CALL) {
             (success,) = address(transaction.to).call{
                 value: transaction.value,
                 gas: gasleft()
@@ -223,9 +220,18 @@ abstract contract TransactionManager is MembershipManager {
         require(success, "Refund was not successful");
     }
 
+    /// @notice Gets a transaction proposal through its ID
+    function getTransactionProposal(uint256 transactionId)
+        public
+        view
+        returns (TransactionProposal memory)
+    {
+        return _transactionProposals[transactionId];
+    }
+
     /// @notice Gets the amount of transaction proposals made in this wallet
     function getTransactionProposalCount() public view returns (uint256) {
-        return transactionProposals.length;
+        return _transactionProposals.length;
     }
 
     /// @notice Gets the members that approved a transaction proposal
