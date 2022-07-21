@@ -399,4 +399,69 @@ contract MultisigWalletTest is Test {
 
         assertTrue(multisigWallet.transactionApprovedBy(0, members[0]));
     }
+
+    // Rekoving transaction proposal approvals
+    // -----------------------------------------------------------------------
+
+    function testCannotRevokeApprovalOnTransactionProposalIfNotMember() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, "data"
+        );
+
+        vm.expectRevert("Member-specific operation");
+        multisigWallet.revokeApproval(0);
+    }
+
+    function testCannotRevokeApprovalOnUnexistingTransactionProposal() public {
+        vm.expectRevert("Unknown proposal");
+        vm.prank(members[0]);
+        multisigWallet.revokeApproval(0);
+    }
+
+    function testCannotRevokeApprovalOnNonApprovedTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, "data"
+        );
+
+        vm.expectRevert("Sender didn't approve this proposal");
+        vm.prank(members[0]);
+        multisigWallet.revokeApproval(0);
+    }
+
+    function testCannotRevokeApprovalOnAlreadyExecutedTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+        );
+
+        _approveAll(0, members[0]);
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+
+        vm.expectRevert("This transaction was already executed");
+        vm.prank(members[0]);
+        multisigWallet.revokeApproval(0);
+    }
+
+    function testRevokeApprovalOnTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, "data"
+        );
+
+        _approveAll(0, address(0));
+
+        assertTrue(multisigWallet.transactionApprovedBy(0, members[0]));
+
+        vm.prank(members[0]);
+        multisigWallet.revokeApproval(0);
+
+        assertFalse(multisigWallet.transactionApprovedBy(0, members[0]));
+    }
 }
