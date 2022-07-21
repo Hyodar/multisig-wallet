@@ -16,13 +16,19 @@ abstract contract FallbackManager is MembershipManager {
     address public fallbackContract;
 
     /// @notice Emitted when the wallet's fallback contract is changed
-    /// @param fallbackContract Address that will be set as fallback contract
-    event FallbackContractChanged(address indexed fallbackContract);
+    /// @param previous Previous fallback contract address
+    /// @param current Current fallback contract address
+    event FallbackContractChanged(
+        address indexed previous,
+        address indexed current
+    );
 
     /// @notice Emitted when a fallback contract call is successfully made
     event FallbackContractCalled();
 
     /// @notice Emitted when the contract receives ether through receive()
+    /// @param from Address that deposited ether into the wallet
+    /// @param value Amount of wei deposited into the wallet
     event Deposit(address indexed from, uint256 value);
 
     /// @notice Sets the fallback contract address
@@ -36,7 +42,7 @@ abstract contract FallbackManager is MembershipManager {
     /// @dev The fallback contract must be set and it's required that the call
     ///     is successful
     fallback(bytes calldata callData) external payable returns (bytes memory) {
-        require(fallbackContract != address(0));
+        if (fallbackContract == address(0)) return "";
 
         (bool success, bytes memory returnData) =
             fallbackContract.call{gas: gasleft(), value: msg.value}(callData);
