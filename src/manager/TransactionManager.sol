@@ -50,7 +50,7 @@ abstract contract TransactionManager is MembershipManager {
     TransactionProposal[] internal _transactionProposals;
 
     /// @notice Map that records, per transaction, the approvals of any addresses
-    mapping(uint256 => mapping(address => bool)) transactionApprovedBy;
+    mapping(uint256 => mapping(address => bool)) public transactionApprovedBy;
 
     /// @notice Checks whether a transaction proposal has passed (i.e. it's
     ///     member approvals are greater than or equal to the required
