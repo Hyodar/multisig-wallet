@@ -40,6 +40,22 @@ contract MultisigWalletTest is Test {
         emit RequiredApprovalsChanged(0, REQUIRED_APPROVALS);
 
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
+
+        vm.deal(address(multisigWallet), 1e18);
+    }
+
+    // Utils
+    // -----------------------------------------------------------------------
+
+    function _approveAll(uint256 transactionId, address besides) internal {
+        address[] memory _members = multisigWallet.getMembers();
+
+        for (uint256 i = 0; i < _members.length; i++) {
+            if (_members[i] != besides) {
+                vm.prank(_members[i]);
+                multisigWallet.approve(transactionId);
+            }
+        }
     }
 
     // Constructor
@@ -316,5 +332,60 @@ contract MultisigWalletTest is Test {
         assertEq(transaction.value, 1 ether);
         assertEq(transaction.data, "data");
         assertTrue(multisigWallet.transactionApprovedBy(0, member));
+    }
+
+    // Approving transaction proposals
+    // -----------------------------------------------------------------------
+
+    function testCannotApproveTransactionProposalIfNotMember() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 1 ether, "data"
+        );
+
+        vm.expectRevert("Member-specific operation");
+        multisigWallet.approve(0);
+    }
+
+    function testCannotApproveUnexistingTransactionProposal() public {
+        vm.expectRevert("Unknown proposal");
+        vm.prank(members[0]);
+        multisigWallet.approve(0);
+    }
+
+    function testCannotApproveAlreadyExecutedTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+        );
+
+        _approveAll(0, members[0]);
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+
+        vm.expectRevert("This transaction was already executed");
+        vm.prank(members[0]);
+        multisigWallet.approve(0);
+    }
+
+    function testApproveTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+        );
+
+        _approveAll(0, members[0]);
+
+        vm.prank(members[0]);
+        multisigWallet.approve(0);
+
+        assertTrue(multisigWallet.transactionApprovedBy(0, members[0]));
     }
 }
