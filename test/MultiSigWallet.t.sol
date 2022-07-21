@@ -4,12 +4,18 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 
 import "../src/MultisigWallet.sol";
+import "../src/library/Operation.sol";
 
 contract MultisigWalletTest is Test {
     event Deposit(address indexed from, uint256 value);
     event MemberAdded(address indexed account);
     event MemberRemoved(address indexed account);
     event RequiredApprovalsChanged(uint256 previous, uint256 current);
+    event ProposalCreated(address indexed member, uint256 indexed transactionId);
+    event ProposalApproved(
+        address indexed member,
+        uint256 indexed transactionId
+    );
 
     uint256 constant MEMBER_COUNT = 10;
     uint256 constant REQUIRED_APPROVALS = 7;
@@ -247,5 +253,68 @@ contract MultisigWalletTest is Test {
         multisigWallet.setRequiredApprovals(MEMBER_COUNT - 1);
 
         assertEq(multisigWallet.requiredApprovals(), MEMBER_COUNT - 1);
+    }
+
+    // Creating transaction proposals
+    // -----------------------------------------------------------------------
+
+    function testCannotProposeTransactionIfNotMember() public {
+        vm.expectRevert("Member-specific operation");
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, ""
+        );
+    }
+
+    function testCannotProposeAndApproveTransactionIfNotMember() public {
+        vm.expectRevert("Member-specific operation");
+        multisigWallet.proposeAndApprove(
+            address(0xdef1), Operation.CALL, 0 ether, ""
+        );
+    }
+
+    function testProposeTransaction() public {
+        address member = members[0];
+
+        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        emit ProposalCreated(member, 0);
+
+        vm.prank(member);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 1 ether, "data"
+        );
+
+        TransactionManager.TransactionProposal memory transaction =
+            multisigWallet.getTransactionProposal(0);
+
+        assertEq(transaction.to, address(0xdef1));
+        assertFalse(transaction.executed);
+        assertEq(uint8(transaction.operation), uint8(Operation.CALL));
+        assertEq(transaction.value, 1 ether);
+        assertEq(transaction.data, "data");
+    }
+
+    function testProposeAndApproveTransaction() public {
+        address member = members[0];
+
+        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        emit ProposalCreated(member, 0);
+
+        vm.expectEmit(true, true, true, false, address(multisigWallet));
+        emit ProposalApproved(member, 0);
+
+        vm.prank(member);
+        multisigWallet.proposeAndApprove(
+            address(0xdef1), Operation.CALL, 1 ether, "data"
+        );
+
+        TransactionManager.TransactionProposal memory transaction =
+            multisigWallet.getTransactionProposal(0);
+
+        assertEq(transaction.to, address(0xdef1));
+        assertFalse(transaction.executed);
+        assertEq(uint8(transaction.operation), uint8(Operation.CALL));
+        assertEq(transaction.value, 1 ether);
+        assertEq(transaction.data, "data");
+        assertTrue(multisigWallet.transactionApprovedBy(0, member));
     }
 }
