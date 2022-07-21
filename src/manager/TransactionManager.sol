@@ -52,11 +52,11 @@ abstract contract TransactionManager is MembershipManager {
     /// @notice Map that records, per transaction, the approvals of any addresses
     mapping(uint256 => mapping(address => bool)) public transactionApprovedBy;
 
-    /// @notice Checks whether a transaction proposal has passed (i.e. it's
+    /// @notice Checks whether a transaction proposal has passed (i.e. its
     ///     member approvals are greater than or equal to the required
     ///     approvals)
     /// @dev Expensive operation, O(n)
-    modifier passedVoting(uint256 transactionId) {
+    modifier proposalPassed(uint256 transactionId) {
         uint256 memberCount = _members.length();
         uint256 approvals = 0;
 
@@ -76,12 +76,17 @@ abstract contract TransactionManager is MembershipManager {
         _;
     }
 
-    /// @notice Checks whether a transaction proposal is still open to voting
-    ///     (i.e. it hasn't yet been executed)
-    modifier proposalOpen(uint256 transactionId) {
+    /// @notice Checks whether a transaction proposal exists in the list
+    modifier proposalExists(uint256 transactionId) {
         require(
             transactionId < _transactionProposals.length, "Unknown proposal"
         );
+        _;
+    }
+
+    /// @notice Checks whether a transaction proposal is still open to voting
+    ///     (i.e. it hasn't yet been executed)
+    modifier proposalOpen(uint256 transactionId) {
         require(
             !_transactionProposals[transactionId].executed,
             "This transaction was already executed"
@@ -151,6 +156,7 @@ abstract contract TransactionManager is MembershipManager {
     function approve(uint256 transactionId)
         public
         onlyMember
+        proposalExists(transactionId)
         proposalOpen(transactionId)
     {
         require(
@@ -171,6 +177,7 @@ abstract contract TransactionManager is MembershipManager {
     function revokeApproval(uint256 transactionId)
         public
         onlyMember
+        proposalExists(transactionId)
         proposalOpen(transactionId)
     {
         require(
@@ -189,8 +196,9 @@ abstract contract TransactionManager is MembershipManager {
     function execute(uint256 transactionId)
         public
         onlyMember
+        proposalExists(transactionId)
         proposalOpen(transactionId)
-        passedVoting(transactionId)
+        proposalPassed(transactionId)
     {
         uint256 previousGas = gasleft();
 
