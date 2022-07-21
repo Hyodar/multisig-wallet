@@ -22,6 +22,7 @@ abstract contract TransactionManager is MembershipManager {
         bool executed;
         Operation operation;
         uint256 value;
+        uint256 refundAmount;
         bytes data;
     }
 
@@ -97,7 +98,7 @@ abstract contract TransactionManager is MembershipManager {
     modifier proposalOpen(uint256 transactionId) {
         require(
             !_transactionProposals[transactionId].executed,
-            "This transaction was already executed"
+            "This transaction has already been executed"
         );
         _;
     }
@@ -112,18 +113,24 @@ abstract contract TransactionManager is MembershipManager {
         address to,
         Operation operation,
         uint256 value,
-        bytes calldata data
+        bytes calldata data,
+        uint256 refundAmount
     )
         public
         onlyMember
     {
+        if (operation == Operation.DELEGATE_CALL) {
+            require(value == 0, "Cannot send value in delegatecall");
+        }
+
         _transactionProposals.push(
             TransactionProposal({
                 to: to,
                 operation: operation,
                 executed: false,
                 value: value,
-                data: data
+                data: data,
+                refundAmount: refundAmount
             })
         );
 
@@ -143,12 +150,13 @@ abstract contract TransactionManager is MembershipManager {
         address to,
         Operation operation,
         uint256 value,
-        bytes calldata data
+        bytes calldata data,
+        uint256 refundAmount
     )
         public
         onlyMember
     {
-        proposeTransaction(to, operation, value, data);
+        proposeTransaction(to, operation, value, data, refundAmount);
 
         unchecked {
             // _transactionProposals.length > 0
@@ -208,8 +216,6 @@ abstract contract TransactionManager is MembershipManager {
         proposalOpen(transactionId)
         proposalPassed(transactionId)
     {
-        uint256 previousGas = gasleft();
-
         TransactionProposal storage transaction =
             _transactionProposals[transactionId];
         transaction.executed = true;
@@ -230,11 +236,16 @@ abstract contract TransactionManager is MembershipManager {
         require(success, "Transaction was not successful");
         emit TransactionProposalExecuted(msg.sender, transactionId);
 
-        // refund msg.sender approximately the eth amount spent
-        (success,) =
-            msg.sender.call{value: (previousGas - gasleft()) * tx.gasprice}("");
+        uint256 refundAmount = transaction.refundAmount;
 
-        require(success, "Refund was not successful");
+        if (refundAmount != 0) {
+            // shouldn't allow reentering execute() with the same transaction
+            // since at this point the transaction is already marked as
+            // executed, so proposalOpen() would revert
+            // ref. MultisigWalletTest.testCannotReenterExecuteWithTheSameTransaction()
+            (success,) = msg.sender.call{value: refundAmount}("");
+            require(success, "Refund was not successful");
+        }
     }
 
     /// @notice Gets a transaction proposal through its ID
