@@ -34,6 +34,7 @@ abstract contract FallbackManager is MembershipManager {
     /// @notice Sets the fallback contract address
     /// @dev Can only be called from the wallet itself
     function setFallbackContract(address _fallbackContract) public onlyWallet {
+        emit FallbackContractChanged(fallbackContract, _fallbackContract);
         fallbackContract = _fallbackContract;
     }
 
