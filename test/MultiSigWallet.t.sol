@@ -6,6 +6,24 @@ import "forge-std/Test.sol";
 import "../src/MultisigWallet.sol";
 import "../src/library/Operation.sol";
 
+contract StorageEditor {
+    function editSlot(uint256 slot, uint256 value) public {
+        assembly { sstore(slot, value) }
+    }
+}
+
+contract Reverter {
+    fallback() external payable {
+        revert();
+    }
+}
+
+contract ReentrantMember {
+    fallback() external payable {
+        MultisigWallet(payable(msg.sender)).execute(0);
+    }
+}
+
 contract MultisigWalletTest is Test {
     event Deposit(address indexed from, uint256 value);
     event MemberAdded(address indexed account);
@@ -16,12 +34,22 @@ contract MultisigWalletTest is Test {
         address indexed member,
         uint256 indexed transactionId
     );
+    event ProposalApprovalRevoked(
+        address indexed member,
+        uint256 indexed transactionId
+    );
+    event TransactionProposalExecuted(
+        address indexed member,
+        uint256 indexed transactionId
+    );
 
     uint256 constant MEMBER_COUNT = 10;
     uint256 constant REQUIRED_APPROVALS = 7;
     address[] members;
 
     MultisigWallet multisigWallet;
+    StorageEditor storageEditor;
+    Reverter reverter;
 
     function setUp() public {
         // some assertions that assure the following tests will work as expected
@@ -40,8 +68,10 @@ contract MultisigWalletTest is Test {
         emit RequiredApprovalsChanged(0, REQUIRED_APPROVALS);
 
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
+        storageEditor = new StorageEditor();
+        reverter = new Reverter();
 
-        vm.deal(address(multisigWallet), 1e18);
+        vm.deal(address(multisigWallet), 10 ether);
     }
 
     // Utils
@@ -277,14 +307,24 @@ contract MultisigWalletTest is Test {
     function testCannotProposeTransactionIfNotMember() public {
         vm.expectRevert("Member-specific operation");
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, ""
+            address(0xdef1), Operation.CALL, 0 ether, "", 0 ether
         );
     }
 
     function testCannotProposeAndApproveTransactionIfNotMember() public {
         vm.expectRevert("Member-specific operation");
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 0 ether, ""
+            address(0xdef1), Operation.CALL, 0 ether, "", 0 ether
+        );
+    }
+
+    function testCannotProposeDelegateCallTransactionWithNonZeroValue()
+        public
+    {
+        vm.expectRevert("Cannot send value in delegatecall");
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.DELEGATE_CALL, 1 ether, "", 0 ether
         );
     }
 
@@ -296,7 +336,7 @@ contract MultisigWalletTest is Test {
 
         vm.prank(member);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 1 ether, "data"
+            address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
         );
 
         TransactionManager.TransactionProposal memory transaction =
@@ -320,7 +360,7 @@ contract MultisigWalletTest is Test {
 
         vm.prank(member);
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 1 ether, "data"
+            address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
         );
 
         TransactionManager.TransactionProposal memory transaction =
@@ -340,7 +380,7 @@ contract MultisigWalletTest is Test {
     function testCannotApproveTransactionProposalIfNotMember() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
         );
 
         vm.expectRevert("Member-specific operation");
@@ -356,7 +396,7 @@ contract MultisigWalletTest is Test {
     function testCannotApproveAlreadyApprovedTransactionProposal() public {
         vm.prank(members[0]);
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 0 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
         );
 
         vm.expectRevert("Sender already approved this proposal");
@@ -370,7 +410,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            0 ether
         );
 
         _approveAll(0, members[0]);
@@ -378,7 +419,7 @@ contract MultisigWalletTest is Test {
         vm.prank(members[0]);
         multisigWallet.execute(0);
 
-        vm.expectRevert("This transaction was already executed");
+        vm.expectRevert("This transaction has already been executed");
         vm.prank(members[0]);
         multisigWallet.approve(0);
     }
@@ -389,7 +430,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            0 ether
         );
 
         _approveAll(0, members[0]);
@@ -403,10 +445,12 @@ contract MultisigWalletTest is Test {
     // Rekoving transaction proposal approvals
     // -----------------------------------------------------------------------
 
-    function testCannotRevokeApprovalOnTransactionProposalIfNotMember() public {
+    function testCannotRevokeApprovalOnTransactionProposalIfNotMember()
+        public
+    {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
         );
 
         vm.expectRevert("Member-specific operation");
@@ -419,10 +463,12 @@ contract MultisigWalletTest is Test {
         multisigWallet.revokeApproval(0);
     }
 
-    function testCannotRevokeApprovalOnNonApprovedTransactionProposal() public {
+    function testCannotRevokeApprovalOnNonApprovedTransactionProposal()
+        public
+    {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
         );
 
         vm.expectRevert("Sender didn't approve this proposal");
@@ -430,13 +476,16 @@ contract MultisigWalletTest is Test {
         multisigWallet.revokeApproval(0);
     }
 
-    function testCannotRevokeApprovalOnAlreadyExecutedTransactionProposal() public {
+    function testCannotRevokeApprovalOnAlreadyExecutedTransactionProposal()
+        public
+    {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1))
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            0 ether
         );
 
         _approveAll(0, members[0]);
@@ -444,7 +493,7 @@ contract MultisigWalletTest is Test {
         vm.prank(members[0]);
         multisigWallet.execute(0);
 
-        vm.expectRevert("This transaction was already executed");
+        vm.expectRevert("This transaction has already been executed");
         vm.prank(members[0]);
         multisigWallet.revokeApproval(0);
     }
@@ -452,7 +501,7 @@ contract MultisigWalletTest is Test {
     function testRevokeApprovalOnTransactionProposal() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
         );
 
         _approveAll(0, address(0));
@@ -463,5 +512,199 @@ contract MultisigWalletTest is Test {
         multisigWallet.revokeApproval(0);
 
         assertFalse(multisigWallet.transactionApprovedBy(0, members[0]));
+    }
+
+    // Executing transaction proposals
+    // -----------------------------------------------------------------------
+
+    function testCannotExecuteTransactionProposalIfNotMember() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+        );
+
+        _approveAll(0, address(0));
+
+        vm.expectRevert("Member-specific operation");
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteUnexistingTransactionProposal() public {
+        vm.prank(members[0]);
+        vm.expectRevert("Unknown proposal");
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteAlreadyExecutedTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            0 ether
+        );
+
+        _approveAll(0, address(0));
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+        assertEq(multisigWallet.getMembers()[MEMBER_COUNT], address(0xdef1));
+
+        members.push(address(0xdef1));
+
+        vm.prank(members[0]);
+        vm.expectRevert("This transaction has already been executed");
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteNonSufficientlyApprovedTransactionProposal()
+        public
+    {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+        );
+
+        for (uint256 i = 0; i < REQUIRED_APPROVALS - 1; i++) {
+            vm.prank(members[i]);
+            multisigWallet.approve(0);
+        }
+
+        vm.prank(members[0]);
+        vm.expectRevert("Not enough approvals");
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteUnsuccessfulCall() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(reverter), Operation.CALL, 1 ether, "data", 0 ether
+        );
+
+        _approveAll(0, address(0));
+
+        vm.prank(members[0]);
+        vm.expectRevert("Transaction was not successful");
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteUnsuccessfulDelegateCall() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(reverter), Operation.DELEGATE_CALL, 0 ether, "data", 0 ether
+        );
+
+        _approveAll(0, address(0));
+
+        vm.expectRevert("Transaction was not successful");
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteIfNotEnoughEtherToSend() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1),
+            Operation.CALL,
+            address(multisigWallet).balance + 1,
+            "data",
+            0 ether
+        );
+
+        _approveAll(0, address(0));
+
+        vm.expectRevert("Transaction was not successful");
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+    }
+
+    function testCannotExecuteIfNotEnoughEtherToRefund() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(0xdef1),
+            Operation.CALL,
+            address(multisigWallet).balance,
+            "data",
+            1
+        );
+
+        _approveAll(0, address(0));
+
+        vm.expectRevert("Refund was not successful");
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+    }
+
+    function testCannotReenterExecuteWithTheSameTransaction() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            1 ether
+        );
+
+        ReentrantMember reentrantMember = new ReentrantMember();
+        vm.etch(members[0], address(reentrantMember).code);
+
+        _approveAll(0, address(0));
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+
+        vm.expectRevert("This transaction has already been executed");
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+    }
+
+    function testExecuteCallTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(multisigWallet),
+            Operation.CALL,
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
+            1 ether
+        );
+
+        uint256 previousBalance = address(members[0]).balance;
+
+        _approveAll(0, address(0));
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+
+        uint256 refundAmount = address(members[0]).balance - previousBalance;
+
+        assertEq(refundAmount, 1 ether);
+        assertEq(multisigWallet.getMembers()[MEMBER_COUNT], address(0xdef1));
+    }
+
+    function testExecuteDelegateCallTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeTransaction(
+            address(storageEditor),
+            Operation.DELEGATE_CALL,
+            0 ether,
+            abi.encodeWithSignature("editSlot(uint256,uint256)", 0xdef1, 0xf00d),
+            1.5 ether
+        );
+
+        _approveAll(0, address(0));
+
+        uint256 previousBalance = address(members[0]).balance;
+
+        vm.prank(members[0]);
+        multisigWallet.execute(0);
+
+        uint256 refundAmount = address(members[0]).balance - previousBalance;
+
+        assertEq(refundAmount, 1.5 ether);
+        assertEq(
+            vm.load(address(multisigWallet), bytes32(uint256(0xdef1))),
+            bytes32(uint256(0xf00d))
+        );
     }
 }
