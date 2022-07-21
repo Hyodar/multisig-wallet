@@ -340,7 +340,7 @@ contract MultisigWalletTest is Test {
     function testCannotApproveTransactionProposalIfNotMember() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 1 ether, "data"
+            address(0xdef1), Operation.CALL, 0 ether, "data"
         );
 
         vm.expectRevert("Member-specific operation");
@@ -349,6 +349,17 @@ contract MultisigWalletTest is Test {
 
     function testCannotApproveUnexistingTransactionProposal() public {
         vm.expectRevert("Unknown proposal");
+        vm.prank(members[0]);
+        multisigWallet.approve(0);
+    }
+
+    function testCannotApproveAlreadyApprovedTransactionProposal() public {
+        vm.prank(members[0]);
+        multisigWallet.proposeAndApprove(
+            address(0xdef1), Operation.CALL, 0 ether, "data"
+        );
+
+        vm.expectRevert("Sender already approved this proposal");
         vm.prank(members[0]);
         multisigWallet.approve(0);
     }
