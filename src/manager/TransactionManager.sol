@@ -46,6 +46,14 @@ abstract contract TransactionManager is MembershipManager {
         uint256 indexed transactionId
     );
 
+    /// @notice Emitted when a transaction proposal is executed by a member
+    /// @param member The address of the member that executed the proposal
+    /// @param transactionId The ID of the executed transaction proposal
+    event TransactionProposalExecuted(
+        address indexed member,
+        uint256 indexed transactionId
+    );
+
     /// @notice All transaction proposals ever made in the wallet
     TransactionProposal[] internal _transactionProposals;
 
@@ -71,7 +79,7 @@ abstract contract TransactionManager is MembershipManager {
             }
         }
 
-        require(approvals >= requiredApprovals, "Not enough approvals");
+        require(approvals >= requiredApprovals, "");
 
         _;
     }
@@ -220,6 +228,7 @@ abstract contract TransactionManager is MembershipManager {
         }
 
         require(success, "Transaction was not successful");
+        emit TransactionProposalExecuted(msg.sender, transactionId);
 
         // refund msg.sender approximately the eth amount spent
         (success,) =
