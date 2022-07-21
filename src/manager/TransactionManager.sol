@@ -79,7 +79,7 @@ abstract contract TransactionManager is MembershipManager {
             }
         }
 
-        require(approvals >= requiredApprovals, "");
+        require(approvals >= requiredApprovals, "Not enough approvals");
 
         _;
     }
