@@ -71,11 +71,11 @@ contract MultisigWalletTest is Test {
         for (uint160 i = 1; i <= MEMBER_COUNT; i++) {
             members.push(address(i));
 
-            vm.expectEmit(true, false, false, true);
+            vm.expectEmit(true, true, true, true);
             emit MemberAdded(address(i));
         }
 
-        vm.expectEmit(false, false, false, true);
+        vm.expectEmit(false, true, true, true);
         emit RequiredApprovalsChanged(0, REQUIRED_APPROVALS);
 
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
@@ -158,7 +158,7 @@ contract MultisigWalletTest is Test {
 
         uint256 previousBalance = address(multisigWallet).balance;
 
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit Deposit(address(this), value);
 
         (bool success,) = address(multisigWallet).call{value: value}("");
@@ -173,7 +173,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testSetFallbackContract() public {
-        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit FallbackContractChanged(address(0), address(0xdef1));
 
         vm.prank(address(multisigWallet));
@@ -196,7 +196,7 @@ contract MultisigWalletTest is Test {
 
         uint256 previousBalance = address(multisigWallet).balance;
 
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit Deposit(address(this), value);
 
         (success,) = address(multisigWallet).call{value: value}("data");
@@ -251,7 +251,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testAddMember() public {
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit MemberAdded(address(0xdef1));
 
         vm.prank(address(multisigWallet));
@@ -296,7 +296,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testRemoveMember() public {
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit MemberRemoved(members[0]);
 
         vm.prank(address(multisigWallet));
@@ -335,10 +335,10 @@ contract MultisigWalletTest is Test {
     }
 
     function testReplaceMember() public {
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit MemberRemoved(members[0]);
 
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit MemberAdded(address(0xdef1));
 
         vm.prank(address(multisigWallet));
@@ -376,7 +376,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testSetRequiredApprovals() public {
-        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit RequiredApprovalsChanged(REQUIRED_APPROVALS, MEMBER_COUNT - 1);
 
         vm.prank(address(multisigWallet));
@@ -415,7 +415,7 @@ contract MultisigWalletTest is Test {
     function testProposeTransaction() public {
         address member = members[0];
 
-        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit ProposalCreated(member, 0);
 
         vm.prank(member);
@@ -436,10 +436,10 @@ contract MultisigWalletTest is Test {
     function testProposeAndApproveTransaction() public {
         address member = members[0];
 
-        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit ProposalCreated(member, 0);
 
-        vm.expectEmit(true, true, true, false, address(multisigWallet));
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
         emit ProposalApproved(member, 0);
 
         vm.prank(member);
