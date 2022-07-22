@@ -23,9 +23,6 @@ abstract contract FallbackManager is MembershipManager {
         address indexed current
     );
 
-    /// @notice Emitted when a fallback contract call is successfully made
-    event FallbackContractCalled();
-
     /// @notice Emitted when the contract receives ether through receive()
     /// @param from Address that deposited ether into the wallet
     /// @param value Amount of wei deposited into the wallet
@@ -43,20 +40,26 @@ abstract contract FallbackManager is MembershipManager {
     /// @dev The fallback contract must be set and it's required that the call
     ///     is successful
     fallback(bytes calldata callData) external payable returns (bytes memory) {
-        if (fallbackContract == address(0)) return "";
+        if (fallbackContract == address(0)) {
+            if (msg.value != 0) {
+                emit Deposit(msg.sender, msg.value);
+            }
+
+            return "";
+        }
 
         (bool success, bytes memory returnData) =
             fallbackContract.call{gas: gasleft(), value: msg.value}(callData);
 
         require(success);
 
-        emit FallbackContractCalled();
-
         return returnData;
     }
 
     /// @notice Receives ether with no additional message data
     receive() external payable {
-        emit Deposit(msg.sender, msg.value);
+        if (msg.value != 0) {
+            emit Deposit(msg.sender, msg.value);
+        }
     }
 }
