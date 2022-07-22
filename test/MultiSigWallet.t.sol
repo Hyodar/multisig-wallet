@@ -24,6 +24,12 @@ contract ReentrantMember {
     }
 }
 
+contract FallbackHandler {
+    function handle(uint256 value) public pure returns (uint256) {
+        return value;
+    }
+}
+
 contract MultisigWalletTest is Test {
     event Deposit(address indexed from, uint256 value);
     event MemberAdded(address indexed account);
@@ -42,6 +48,10 @@ contract MultisigWalletTest is Test {
         address indexed member,
         uint256 indexed transactionId
     );
+    event FallbackContractChanged(
+        address indexed previous,
+        address indexed current
+    );
 
     uint256 constant MEMBER_COUNT = 10;
     uint256 constant REQUIRED_APPROVALS = 7;
@@ -50,6 +60,7 @@ contract MultisigWalletTest is Test {
     MultisigWallet multisigWallet;
     StorageEditor storageEditor;
     Reverter reverter;
+    FallbackHandler fallbackHandler;
 
     function setUp() public {
         // some assertions that assure the following tests will work as expected
@@ -70,6 +81,7 @@ contract MultisigWalletTest is Test {
         multisigWallet = new MultisigWallet(members, REQUIRED_APPROVALS);
         storageEditor = new StorageEditor();
         reverter = new Reverter();
+        fallbackHandler = new FallbackHandler();
 
         vm.deal(address(multisigWallet), 10 ether);
     }
@@ -128,8 +140,17 @@ contract MultisigWalletTest is Test {
         new MultisigWallet(members, requiredApprovals);
     }
 
-    // Depositing
+    // Depositing and fallback contract
     // -----------------------------------------------------------------------
+
+    function testEtherDepositShouldNotEmitOnZeroDeposit() public {
+        vm.recordLogs();
+
+        (bool success,) = address(multisigWallet).call("");
+        assertTrue(success);
+
+        assertEq(vm.getRecordedLogs().length, 0);
+    }
 
     function testEtherDeposit() public {
         uint256 value = 10 ether;
@@ -144,6 +165,69 @@ contract MultisigWalletTest is Test {
         assertTrue(success);
 
         assertEq(address(multisigWallet).balance, previousBalance + value);
+    }
+
+    function testCannotSetFallbackContractIfNotWallet() public {
+        vm.expectRevert("Wallet-specific operation");
+        multisigWallet.setFallbackContract(address(0xdef1));
+    }
+
+    function testSetFallbackContract() public {
+        vm.expectEmit(true, true, false, false, address(multisigWallet));
+        emit FallbackContractChanged(address(0), address(0xdef1));
+
+        vm.prank(address(multisigWallet));
+        multisigWallet.setFallbackContract(address(0xdef1));
+
+        assertEq(multisigWallet.fallbackContract(), address(0xdef1));
+    }
+
+    function testFallbackWithoutFallbackContractActsAsReceive() public {
+        vm.recordLogs();
+        (bool success, bytes memory returnData) =
+            address(multisigWallet).call("data");
+
+        assertTrue(success);
+        assertEq(returnData, "");
+        assertEq(vm.getRecordedLogs().length, 0);
+
+        uint256 value = 20 ether;
+        vm.deal(address(this), value);
+
+        uint256 previousBalance = address(multisigWallet).balance;
+
+        vm.expectEmit(true, false, false, true, address(multisigWallet));
+        emit Deposit(address(this), value);
+
+        (success,) = address(multisigWallet).call{value: value}("data");
+        assertTrue(success);
+
+        assertEq(address(multisigWallet).balance, previousBalance + value);
+    }
+
+    function testFallbackRevertsOnFallbackContractRevert() public {
+        vm.prank(address(multisigWallet));
+        multisigWallet.setFallbackContract(address(reverter));
+        assertEq(multisigWallet.fallbackContract(), address(reverter));
+
+        (bool success,) = address(multisigWallet).call("data");
+        assertFalse(success);
+    }
+
+    function testFallbackWithFallbackContractSetRedirectsCalls() public {
+        vm.prank(address(multisigWallet));
+        multisigWallet.setFallbackContract(address(fallbackHandler));
+        assertEq(multisigWallet.fallbackContract(), address(fallbackHandler));
+
+        (bool success, bytes memory returnData) = address(multisigWallet).call(
+            abi.encodeWithSignature("handle(uint256)", 1)
+        );
+
+        assertTrue(success);
+
+        (uint256 handledValue) = abi.decode(returnData, (uint256));
+
+        assertEq(handledValue, 1);
     }
 
     // Member addition
