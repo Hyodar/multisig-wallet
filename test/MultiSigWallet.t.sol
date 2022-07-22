@@ -35,12 +35,15 @@ contract MultisigWalletTest is Test {
     event MemberAdded(address indexed account);
     event MemberRemoved(address indexed account);
     event RequiredApprovalsChanged(uint256 previous, uint256 current);
-    event ProposalCreated(address indexed member, uint256 indexed transactionId);
-    event ProposalApproved(
+    event TransactionProposalCreated(
         address indexed member,
         uint256 indexed transactionId
     );
-    event ProposalApprovalRevoked(
+    event TransactionProposalApproved(
+        address indexed member,
+        uint256 indexed transactionId
+    );
+    event TransactionProposalApprovalRevoked(
         address indexed member,
         uint256 indexed transactionId
     );
@@ -413,12 +416,10 @@ contract MultisigWalletTest is Test {
     }
 
     function testProposeTransaction() public {
-        address member = members[0];
-
         vm.expectEmit(true, true, true, true, address(multisigWallet));
-        emit ProposalCreated(member, 0);
+        emit TransactionProposalCreated(members[0], 0);
 
-        vm.prank(member);
+        vm.prank(members[0]);
         multisigWallet.proposeTransaction(
             address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
         );
@@ -434,15 +435,13 @@ contract MultisigWalletTest is Test {
     }
 
     function testProposeAndApproveTransaction() public {
-        address member = members[0];
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
+        emit TransactionProposalCreated(members[0], 0);
 
         vm.expectEmit(true, true, true, true, address(multisigWallet));
-        emit ProposalCreated(member, 0);
+        emit TransactionProposalApproved(members[0], 0);
 
-        vm.expectEmit(true, true, true, true, address(multisigWallet));
-        emit ProposalApproved(member, 0);
-
-        vm.prank(member);
+        vm.prank(members[0]);
         multisigWallet.proposeAndApprove(
             address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
         );
@@ -455,7 +454,7 @@ contract MultisigWalletTest is Test {
         assertEq(uint8(transaction.operation), uint8(Operation.CALL));
         assertEq(transaction.value, 1 ether);
         assertEq(transaction.data, "data");
-        assertTrue(multisigWallet.transactionApprovedBy(0, member));
+        assertTrue(multisigWallet.transactionApprovedBy(0, members[0]));
     }
 
     // Approving transaction proposals
@@ -519,6 +518,11 @@ contract MultisigWalletTest is Test {
         );
 
         _approveAll(0, members[0]);
+
+        assertFalse(multisigWallet.transactionApprovedBy(0, members[0]));
+
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
+        emit TransactionProposalApproved(members[0], 0);
 
         vm.prank(members[0]);
         multisigWallet.approve(0);
@@ -591,6 +595,9 @@ contract MultisigWalletTest is Test {
         _approveAll(0, address(0));
 
         assertTrue(multisigWallet.transactionApprovedBy(0, members[0]));
+
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
+        emit TransactionProposalApprovalRevoked(members[0], 0);
 
         vm.prank(members[0]);
         multisigWallet.revokeApproval(0);
@@ -757,6 +764,9 @@ contract MultisigWalletTest is Test {
 
         _approveAll(0, address(0));
 
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
+        emit TransactionProposalExecuted(members[0], 0);
+
         vm.prank(members[0]);
         multisigWallet.execute(0);
 
@@ -776,9 +786,12 @@ contract MultisigWalletTest is Test {
             1.5 ether
         );
 
+        uint256 previousBalance = address(members[0]).balance;
+
         _approveAll(0, address(0));
 
-        uint256 previousBalance = address(members[0]).balance;
+        vm.expectEmit(true, true, true, true, address(multisigWallet));
+        emit TransactionProposalExecuted(members[0], 0);
 
         vm.prank(members[0]);
         multisigWallet.execute(0);
