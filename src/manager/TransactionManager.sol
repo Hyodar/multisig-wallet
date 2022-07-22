@@ -26,23 +26,27 @@ abstract contract TransactionManager is MembershipManager {
         bytes data;
     }
 
-    /// @notice Emitted when a proposal is created by a member
+    /// @notice Emitted when a transaction proposal is created by a member
     /// @param member The address of the member that created the proposal
     /// @param transactionId The ID of the transaction proposal
-    event ProposalCreated(address indexed member, uint256 indexed transactionId);
-
-    /// @notice Emitted when a proposal is approved by a member
-    /// @param member The address of the member that approved the proposal
-    /// @param transactionId The ID of the transaction proposal being approved
-    event ProposalApproved(
+    event TransactionProposalCreated(
         address indexed member,
         uint256 indexed transactionId
     );
 
-    /// @notice Emitted when a proposal approval is revoked by a member
+    /// @notice Emitted when a transaction proposal is approved by a member
+    /// @param member The address of the member that approved the proposal
+    /// @param transactionId The ID of the transaction proposal being approved
+    event TransactionProposalApproved(
+        address indexed member,
+        uint256 indexed transactionId
+    );
+
+    /// @notice Emitted when a transaction proposal approval is revoked by a
+    ///     member
     /// @param member The address of the member that revoked its approval
     /// @param transactionId The ID of the previously approved transaction proposal
-    event ProposalApprovalRevoked(
+    event TransactionProposalApprovalRevoked(
         address indexed member,
         uint256 indexed transactionId
     );
@@ -136,7 +140,9 @@ abstract contract TransactionManager is MembershipManager {
 
         unchecked {
             // _transactionProposals.length > 0
-            emit ProposalCreated(msg.sender, _transactionProposals.length - 1);
+            emit TransactionProposalCreated(
+                msg.sender, _transactionProposals.length - 1
+                );
         }
     }
 
@@ -181,7 +187,7 @@ abstract contract TransactionManager is MembershipManager {
         );
 
         transactionApprovedBy[transactionId][msg.sender] = true;
-        emit ProposalApproved(msg.sender, transactionId);
+        emit TransactionProposalApproved(msg.sender, transactionId);
     }
 
     /// @notice Revokes a previous transaction proposal approval
@@ -202,7 +208,7 @@ abstract contract TransactionManager is MembershipManager {
         );
 
         transactionApprovedBy[transactionId][msg.sender] = false;
-        emit ProposalApprovalRevoked(msg.sender, transactionId);
+        emit TransactionProposalApprovalRevoked(msg.sender, transactionId);
     }
 
     /// @notice Executes a transaction whose proposal has passed voting
