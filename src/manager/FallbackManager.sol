@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.7;
 
 import "./MembershipManager.sol";
 
@@ -13,6 +13,7 @@ import "./MembershipManager.sol";
 ///     by Gnosis Safe. Gnosis article on this: <https://help.gnosis-safe.io/en/articles/4738352-what-is-a-fallback-handler-and-how-does-it-relate-to-the-gnosis-safe>
 abstract contract FallbackManager is MembershipManager {
     /// @notice Fallback contract that will be called when fallback() is triggered
+    /// @custom:security write-protection="onlyWallet()"
     address public fallbackContract;
 
     /// @notice Emitted when the wallet's fallback contract is changed
@@ -30,9 +31,13 @@ abstract contract FallbackManager is MembershipManager {
 
     /// @notice Sets the fallback contract address
     /// @dev Can only be called from the wallet itself
-    function setFallbackContract(address _fallbackContract) public onlyWallet {
-        emit FallbackContractChanged(fallbackContract, _fallbackContract);
-        fallbackContract = _fallbackContract;
+    function setFallbackContract(address fallbackContract_)
+        external
+        onlyWallet
+    {
+        emit FallbackContractChanged(fallbackContract, fallbackContract_);
+        // slither-disable-next-line missing-zero-check
+        fallbackContract = fallbackContract_;
     }
 
     /// @notice Makes a call to the fallback contract if it exists and
@@ -48,6 +53,7 @@ abstract contract FallbackManager is MembershipManager {
             return "";
         }
 
+        // slither-disable-next-line low-level-calls
         (bool success, bytes memory returnData) =
             fallbackContract.call{gas: gasleft(), value: msg.value}(callData);
 

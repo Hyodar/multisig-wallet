@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.7;
 
 import "../library/MemberList.sol";
 import "../library/Operation.sol";
@@ -10,6 +10,14 @@ import "./MembershipManager.sol";
 /// @notice Manages transactions and provides related utility functions
 abstract contract TransactionManager is MembershipManager {
     using MemberList for MemberList.List;
+
+    /// @notice All transaction proposals ever made in the wallet
+    /// @custom:security write-protection="onlyMember()"
+    TransactionProposal[] internal _transactionProposals;
+
+    /// @notice Map that records, per transaction, the approvals of any addresses
+    /// @custom:security write-protection="onlyMember()"
+    mapping(uint256 => mapping(address => bool)) public transactionApprovedBy;
 
     /// @notice Container for transaction proposal information
     /// @member to Destination of the transaction that would be executed
@@ -59,24 +67,20 @@ abstract contract TransactionManager is MembershipManager {
         uint256 indexed transactionId
     );
 
-    /// @notice All transaction proposals ever made in the wallet
-    TransactionProposal[] internal _transactionProposals;
-
-    /// @notice Map that records, per transaction, the approvals of any addresses
-    mapping(uint256 => mapping(address => bool)) public transactionApprovedBy;
-
     /// @notice Checks whether a transaction proposal has passed (i.e. its
     ///     member approvals are greater than or equal to the required
     ///     approvals)
     /// @dev Expensive operation, O(n)
     modifier proposalPassed(uint256 transactionId) {
-        uint256 memberCount = _members.length();
+        uint256 _memberCount = memberCount();
         uint256 approvals = 0;
 
         unchecked {
             // nothing can realistically overflow here
             for (
-                uint256 i = 0; i < memberCount && approvals < requiredApprovals; i++
+                uint256 i = 0;
+                i < _memberCount && approvals < requiredApprovals;
+                i++
             ) {
                 if (transactionApprovedBy[transactionId][_members.at(i)]) {
                     approvals++;
@@ -159,7 +163,7 @@ abstract contract TransactionManager is MembershipManager {
         bytes calldata data,
         uint256 refundAmount
     )
-        public
+        external
         onlyMember
     {
         proposeTransaction(to, operation, value, data, refundAmount);
@@ -197,7 +201,7 @@ abstract contract TransactionManager is MembershipManager {
     /// @param transactionId ID of the transaction proposal to have the
     ///      sender's approval revoked
     function revokeApproval(uint256 transactionId)
-        public
+        external
         onlyMember
         proposalExists(transactionId)
         proposalOpen(transactionId)
@@ -213,10 +217,14 @@ abstract contract TransactionManager is MembershipManager {
 
     /// @notice Executes a transaction whose proposal has passed voting
     /// @dev Can only be called by a member, requires that the proposal
-    ///     is still open and already has at least the required approvals
+    ///     is still open and already has at least the required approvals.
+    ///     None of the calls should allow reentering execute() with the
+    ///     same transaction since when those happen the transaction is
+    ///     already marked as executed, so proposalOpen() would revert.
+    ///     Refer to {MultisigWalletTest-testCannotReenterExecuteWithTheSameTransaction}
     /// @param transactionId ID of the transaction proposal to be executed
     function execute(uint256 transactionId)
-        public
+        external
         onlyMember
         proposalExists(transactionId)
         proposalOpen(transactionId)
@@ -228,27 +236,28 @@ abstract contract TransactionManager is MembershipManager {
 
         bool success;
 
+        // emit first so the event order stays the same even if the first call
+        // leads to another execute() somehow
+        emit TransactionProposalExecuted(msg.sender, transactionId);
+
         if (transaction.operation == Operation.CALL) {
+            // slither-disable-next-line low-level-calls
             (success,) = address(transaction.to).call{
                 value: transaction.value,
                 gas: gasleft()
             }(transaction.data);
         } else {
+            // slither-disable-next-line low-level-calls
             (success,) = address(transaction.to).delegatecall{gas: gasleft()}(
                 transaction.data
             );
         }
 
         require(success, "Transaction was not successful");
-        emit TransactionProposalExecuted(msg.sender, transactionId);
 
         uint256 refundAmount = transaction.refundAmount;
 
         if (refundAmount != 0) {
-            // shouldn't allow reentering execute() with the same transaction
-            // since at this point the transaction is already marked as
-            // executed, so proposalOpen() would revert
-            // ref. MultisigWalletTest.testCannotReenterExecuteWithTheSameTransaction()
             (success,) = msg.sender.call{value: refundAmount}("");
             require(success, "Refund was not successful");
         }
@@ -256,7 +265,7 @@ abstract contract TransactionManager is MembershipManager {
 
     /// @notice Gets a transaction proposal through its ID
     function getTransactionProposal(uint256 transactionId)
-        public
+        external
         view
         returns (TransactionProposal memory)
     {
@@ -264,14 +273,14 @@ abstract contract TransactionManager is MembershipManager {
     }
 
     /// @notice Gets the amount of transaction proposals made in this wallet
-    function getTransactionProposalCount() public view returns (uint256) {
+    function getTransactionProposalCount() external view returns (uint256) {
         return _transactionProposals.length;
     }
 
     /// @notice Gets the members that approved a transaction proposal
     /// @param transactionId The ID of the transaction proposal
     function getApprovingMembers(uint256 transactionId)
-        public
+        external
         view
         returns (address[] memory)
     {

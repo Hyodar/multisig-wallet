@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.7;
 
 import "../library/MemberList.sol";
 
@@ -13,6 +13,7 @@ abstract contract MembershipManager {
     MemberList.List internal _members;
 
     /// @notice Required approvals in order to execute a transaction
+    /// @custom:security write-protection="onlyWallet()"
     uint256 public requiredApprovals;
 
     /// @notice Emitted when a member is added
@@ -41,13 +42,13 @@ abstract contract MembershipManager {
     /// @notice Checks whether a member count and required approvals setup is
     ///     valid - that is, if both are different from 0 and the required
     ///     approvals value is not greater than the member count.
-    modifier validSetup(uint256 _memberCount, uint256 _requiredApprovals) {
+    modifier validSetup(uint256 _memberCount, uint256 requiredApprovals_) {
         require(
-            _memberCount != 0 && _requiredApprovals != 0,
+            _memberCount != 0 && requiredApprovals_ != 0,
             "There should be at least one member and at least one approval should be required"
         );
         require(
-            _requiredApprovals <= _memberCount,
+            requiredApprovals_ <= _memberCount,
             "Required approvals should not be greater than the amount of members"
         );
         _;
@@ -57,7 +58,7 @@ abstract contract MembershipManager {
     /// @dev Can only be called by the wallet itself, the account must not be
     ///     a member and must not be the zero address
     /// @param account The account address to be added as member
-    function addMember(address account) public onlyWallet {
+    function addMember(address account) external onlyWallet {
         _addMember(account);
     }
 
@@ -65,7 +66,7 @@ abstract contract MembershipManager {
     /// @dev Can only be called by the wallet itself, the account must be a
     ///     member
     /// @param account The account address to be removed from the member list
-    function removeMember(address account) public onlyWallet {
+    function removeMember(address account) external onlyWallet {
         _removeMember(account);
     }
 
@@ -75,7 +76,7 @@ abstract contract MembershipManager {
     ///     be the zero address
     /// @param from The current member to be replaced
     /// @param to The non-member that will replace `from`
-    function replaceMember(address from, address to) public onlyWallet {
+    function replaceMember(address from, address to) external onlyWallet {
         _replaceMember(from, to);
     }
 
@@ -84,16 +85,16 @@ abstract contract MembershipManager {
     /// @dev Can only be called by the wallet itself and the final setup of
     ///     member count and required approvals must be valid. Refer to
     ///     {MembershipManager-validSetup}
-    function setRequiredApprovals(uint256 _requiredApprovals)
-        public
+    function setRequiredApprovals(uint256 requiredApprovals_)
+        external
         onlyWallet
     {
-        _setRequiredApprovals(_requiredApprovals);
+        _setRequiredApprovals(requiredApprovals_);
     }
 
     /// @notice Gets the members list as an array
     /// @dev Results in a (possibly large) array copy.
-    function getMembers() public view returns (address[] memory) {
+    function getMembers() external view returns (address[] memory) {
         return _members.values();
     }
 
@@ -151,12 +152,12 @@ abstract contract MembershipManager {
     ///     executed
     /// @dev The final setup of member count and required approvals must be
     ///     valid. Refer to {MembershipManager-validSetup}
-    function _setRequiredApprovals(uint256 _requiredApprovals)
+    function _setRequiredApprovals(uint256 requiredApprovals_)
         internal
-        validSetup(_members.length(), _requiredApprovals)
+        validSetup(_members.length(), requiredApprovals_)
     {
-        emit RequiredApprovalsChanged(requiredApprovals, _requiredApprovals);
-        requiredApprovals = _requiredApprovals;
+        emit RequiredApprovalsChanged(requiredApprovals, requiredApprovals_);
+        requiredApprovals = requiredApprovals_;
     }
 
     /// @notice Sets up the initial membership data
@@ -166,7 +167,7 @@ abstract contract MembershipManager {
     ///     `members`.
     function _setupMembership(
         address[] memory members,
-        uint256 _requiredApprovals
+        uint256 requiredApprovals_
     )
         internal
     {
@@ -174,6 +175,6 @@ abstract contract MembershipManager {
             _addMember(members[i]);
         }
 
-        _setRequiredApprovals(_requiredApprovals);
+        _setRequiredApprovals(requiredApprovals_);
     }
 }
