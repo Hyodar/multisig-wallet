@@ -42,13 +42,13 @@ abstract contract MembershipManager {
     /// @notice Checks whether a member count and required approvals setup is
     ///     valid - that is, if both are different from 0 and the required
     ///     approvals value is not greater than the member count.
-    modifier validSetup(uint256 _memberCount, uint256 requiredApprovals_) {
+    modifier validSetup(uint256 memberCount_, uint256 requiredApprovals_) {
         require(
-            _memberCount != 0 && requiredApprovals_ != 0,
+            memberCount_ != 0 && requiredApprovals_ != 0,
             "There should be at least one member and at least one approval should be required"
         );
         require(
-            requiredApprovals_ <= _memberCount,
+            requiredApprovals_ <= memberCount_,
             "Required approvals should not be greater than the amount of members"
         );
         _;
