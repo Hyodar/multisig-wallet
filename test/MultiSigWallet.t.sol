@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 
 import "../src/MultisigWallet.sol";
-import "../src/library/Operation.sol";
+import "../src/utils/Operation.sol";
 
 contract StorageEditor {
     function editSlot(uint256 slot, uint256 value) public {

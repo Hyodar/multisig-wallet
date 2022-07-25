@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "../library/MemberList.sol";
+import "../utils/MemberList.sol";
 
 /// @title Multisig membership management logic
 /// @author Hyodar
