@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
 
@@ -103,6 +103,30 @@ contract MultisigWalletTest is Test {
         }
     }
 
+    function _computeCreateAddress(uint8 nonce)
+        internal
+        view
+        returns (address)
+    {
+        require(nonce <= 0x7f);
+        return address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes1(0xd6),
+                            bytes1(0x94),
+                            address(this),
+                            // added condition even though EIP161 states
+                            // contract nonces start at 1
+                            bytes1((nonce == 0) ? 0x80 : nonce)
+                        )
+                    )
+                )
+            )
+        );
+    }
+
     // Constructor
     // -----------------------------------------------------------------------
 
@@ -114,8 +138,25 @@ contract MultisigWalletTest is Test {
     function testCannotDeployWithZeroAddressMember() public {
         address[] memory _members = new address[](1);
 
-        vm.expectRevert("Zero address can't be added as member");
+        vm.expectRevert("Zero address cannot be added as member");
         new MultisigWallet(_members, 1);
+    }
+
+    function testCannotDeployWithWalletBeingAMember() public {
+        address[] memory _members = new address[](1);
+        _members[0] = _computeCreateAddress(5);
+
+        vm.expectRevert("Wallet cannot be added as member");
+        new MultisigWallet(_members, 1);
+    }
+
+    function testCannotDeployWithDuplicateMembers() public {
+        address[] memory _members = new address[](2);
+        _members[0] = address(0xdef1);
+        _members[1] = address(0xdef1);
+
+        vm.expectRevert("Account is already a member");
+        new MultisigWallet(_members, 2);
     }
 
     function testCannotDeployWithEmptyMembersList() public {
@@ -242,9 +283,15 @@ contract MultisigWalletTest is Test {
     }
 
     function testCannotAddZeroAddressMember() public {
-        vm.expectRevert("Zero address can't be added as member");
+        vm.expectRevert("Zero address cannot be added as member");
         vm.prank(address(multisigWallet));
         multisigWallet.addMember(address(0));
+    }
+
+    function testCannotAddWalletAsMember() public {
+        vm.expectRevert("Wallet cannot be added as member");
+        vm.prank(address(multisigWallet));
+        multisigWallet.addMember(address(multisigWallet));
     }
 
     function testCannotAddExistingMember() public {
@@ -332,7 +379,7 @@ contract MultisigWalletTest is Test {
     }
 
     function testCannotReplaceMemberWithZeroAddress() public {
-        vm.expectRevert("Zero address can't be added as member");
+        vm.expectRevert("Zero address cannot be added as member");
         vm.prank(address(multisigWallet));
         multisigWallet.replaceMember(members[0], address(0));
     }

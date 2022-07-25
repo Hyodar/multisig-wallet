@@ -30,7 +30,7 @@ library MemberList {
     /// @param account The account address to be added
     function add(List storage self, address account) internal {
         require(!contains(self, account), "Account is already a member");
-        require(account != address(0), "Zero address can't be added as member");
+        require(account != address(0), "Zero address cannot be added as member");
 
         self._members.push(account);
         self._memberOrder[account] = self._members.length;
@@ -74,7 +74,7 @@ library MemberList {
     /// @param to The non-member that will replace `from`
     function replace(List storage self, address from, address to) internal {
         require(!contains(self, to), "Account is already a member");
-        require(to != address(0), "Zero address can't be added as member");
+        require(to != address(0), "Zero address cannot be added as member");
 
         uint256 replacedMemberOrder = self._memberOrder[from];
         require(replacedMemberOrder != 0, "Replaced account is not a member");

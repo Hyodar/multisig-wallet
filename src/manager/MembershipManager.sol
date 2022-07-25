@@ -118,6 +118,8 @@ abstract contract MembershipManager {
     /// @dev The account must not be a member and must not be the zero address
     /// @param account The account address to be added
     function _addMember(address account) internal {
+        require(account != address(this), "Wallet cannot be added as member");
+
         _members.add(account);
 
         emit MemberAdded(account);
