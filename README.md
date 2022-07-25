@@ -6,7 +6,7 @@ The contract acts as a shared wallet for multiple members. Any member can submit
 
 Besides external calls, there is also a number of wallet administrative operations that can only be executed through these proposals, such as adding or removing or replacing members, changing the approval threshold or setting a fallback contract that can extend the wallet's functionalities (e.g. implementing a specific callback).
 
-An instance of this contract was deployed in the Goerli testnet at [`0xe37eb278bde1cea9c1fe32a40d0ba160d3a94592`](https://goerli.etherscan.io/address/0xe37eb278bde1cea9c1fe32a40d0ba160d3a94592). The deployment script is available at `script/MultisigWallet.s.sol`.
+An instance of this contract was deployed in the Goerli testnet at [`0xd02e968d8122d690b06aa9ad12db51d62f39f34a`](https://goerli.etherscan.io/address/0xd02e968d8122d690b06aa9ad12db51d62f39f34a). The deployment script is available at `script/MultisigWallet.s.sol`.
 
 ## Usage
 
