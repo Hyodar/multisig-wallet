@@ -441,14 +441,14 @@ contract MultisigWalletTest is Test {
     function testCannotProposeTransactionIfNotMember() public {
         vm.expectRevert("Member-specific operation");
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, ""
         );
     }
 
     function testCannotProposeAndApproveTransactionIfNotMember() public {
         vm.expectRevert("Member-specific operation");
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 0 ether, "", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, ""
         );
     }
 
@@ -458,7 +458,7 @@ contract MultisigWalletTest is Test {
         vm.expectRevert("Cannot send value in delegatecall");
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.DELEGATE_CALL, 1 ether, "", 0 ether
+            address(0xdef1), Operation.DELEGATE_CALL, 1 ether, 0 ether, ""
         );
     }
 
@@ -468,7 +468,7 @@ contract MultisigWalletTest is Test {
 
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 1 ether, 0 ether, "data"
         );
 
         TransactionManager.TransactionProposal memory transaction =
@@ -490,7 +490,7 @@ contract MultisigWalletTest is Test {
 
         vm.prank(members[0]);
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 1 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 1 ether, 0 ether, "data"
         );
 
         TransactionManager.TransactionProposal memory transaction =
@@ -510,7 +510,7 @@ contract MultisigWalletTest is Test {
     function testCannotApproveTransactionProposalIfNotMember() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         vm.expectRevert("Member-specific operation");
@@ -526,7 +526,7 @@ contract MultisigWalletTest is Test {
     function testCannotApproveAlreadyApprovedTransactionProposal() public {
         vm.prank(members[0]);
         multisigWallet.proposeAndApprove(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         vm.expectRevert("Sender already approved this proposal");
@@ -540,8 +540,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            0 ether
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         _approveAll(0, members[0]);
@@ -560,8 +560,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            0 ether
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         _approveAll(0, members[0]);
@@ -585,7 +585,7 @@ contract MultisigWalletTest is Test {
     {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         vm.expectRevert("Member-specific operation");
@@ -603,7 +603,7 @@ contract MultisigWalletTest is Test {
     {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         vm.expectRevert("Sender didn't approve this proposal");
@@ -619,8 +619,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            0 ether
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         _approveAll(0, members[0]);
@@ -636,7 +636,7 @@ contract MultisigWalletTest is Test {
     function testRevokeApprovalOnTransactionProposal() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         _approveAll(0, address(0));
@@ -658,7 +658,7 @@ contract MultisigWalletTest is Test {
     function testCannotExecuteTransactionProposalIfNotMember() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         _approveAll(0, address(0));
@@ -679,8 +679,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            0 ether
+            0 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         _approveAll(0, address(0));
@@ -701,7 +701,7 @@ contract MultisigWalletTest is Test {
     {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(0xdef1), Operation.CALL, 0 ether, "data", 0 ether
+            address(0xdef1), Operation.CALL, 0 ether, 0 ether, "data"
         );
 
         for (uint256 i = 0; i < REQUIRED_APPROVALS - 1; i++) {
@@ -717,7 +717,7 @@ contract MultisigWalletTest is Test {
     function testCannotExecuteUnsuccessfulCall() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(reverter), Operation.CALL, 1 ether, "data", 0 ether
+            address(reverter), Operation.CALL, 1 ether, 0 ether, "data"
         );
 
         _approveAll(0, address(0));
@@ -730,7 +730,7 @@ contract MultisigWalletTest is Test {
     function testCannotExecuteUnsuccessfulDelegateCall() public {
         vm.prank(members[0]);
         multisigWallet.proposeTransaction(
-            address(reverter), Operation.DELEGATE_CALL, 0 ether, "data", 0 ether
+            address(reverter), Operation.DELEGATE_CALL, 0 ether, 0 ether, "data"
         );
 
         _approveAll(0, address(0));
@@ -746,8 +746,8 @@ contract MultisigWalletTest is Test {
             address(0xdef1),
             Operation.CALL,
             address(multisigWallet).balance + 1,
-            "data",
-            0 ether
+            0 ether,
+            "data"
         );
 
         _approveAll(0, address(0));
@@ -763,8 +763,8 @@ contract MultisigWalletTest is Test {
             address(0xdef1),
             Operation.CALL,
             address(multisigWallet).balance,
-            "data",
-            1
+            1 wei,
+            "data"
         );
 
         _approveAll(0, address(0));
@@ -780,8 +780,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            1 ether
+            1 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         ReentrantMember reentrantMember = new ReentrantMember();
@@ -803,8 +803,8 @@ contract MultisigWalletTest is Test {
             address(multisigWallet),
             Operation.CALL,
             0 ether,
-            abi.encodeWithSignature("addMember(address)", address(0xdef1)),
-            1 ether
+            1 ether,
+            abi.encodeWithSignature("addMember(address)", address(0xdef1))
         );
 
         uint256 previousBalance = address(members[0]).balance;
@@ -829,8 +829,8 @@ contract MultisigWalletTest is Test {
             address(storageEditor),
             Operation.DELEGATE_CALL,
             0 ether,
-            abi.encodeWithSignature("editSlot(uint256,uint256)", 0xdef1, 0xf00d),
-            1.5 ether
+            1.5 ether,
+            abi.encodeWithSignature("editSlot(uint256,uint256)", 0xdef1, 0xf00d)
         );
 
         uint256 previousBalance = address(members[0]).balance;

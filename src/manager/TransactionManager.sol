@@ -23,8 +23,10 @@ abstract contract TransactionManager is MembershipManager {
     /// @member to Destination of the transaction that would be executed
     /// @member executed Flag that indicates whether a transaction has already
     ///     been executed or not
-    /// @member value The ether value to be sent in the transaction
-    /// @member data The encoded transaction data
+    /// @member value Ether value to be sent in the transaction
+    /// @member refundAmount Ether amount to be refunded to the member that
+    ///     executes the proposal
+    /// @member data The encoded call data
     struct TransactionProposal {
         address to;
         bool executed;
@@ -116,13 +118,15 @@ abstract contract TransactionManager is MembershipManager {
     /// @param to Call destination
     /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
+    /// @param refundAmount Ether amount to be refunded to the member that
+    ///     executes the proposal
     /// @param data Encoded call data
     function proposeTransaction(
         address to,
         Operation operation,
         uint256 value,
-        bytes calldata data,
-        uint256 refundAmount
+        uint256 refundAmount,
+        bytes calldata data
     )
         public
         onlyMember
@@ -137,8 +141,8 @@ abstract contract TransactionManager is MembershipManager {
                 operation: operation,
                 executed: false,
                 value: value,
-                data: data,
-                refundAmount: refundAmount
+                refundAmount: refundAmount,
+                data: data
             })
         );
 
@@ -155,18 +159,20 @@ abstract contract TransactionManager is MembershipManager {
     /// @param to Call destination
     /// @param operation Operation type (call or delegatecall)
     /// @param value Ether value to be sent in the call
+    /// @param refundAmount Ether amount to be refunded to the member that
+    ///     executes the proposal
     /// @param data Encoded call data
     function proposeAndApprove(
         address to,
         Operation operation,
         uint256 value,
-        bytes calldata data,
-        uint256 refundAmount
+        uint256 refundAmount,
+        bytes calldata data
     )
         external
         onlyMember
     {
-        proposeTransaction(to, operation, value, data, refundAmount);
+        proposeTransaction(to, operation, value, refundAmount, data);
 
         unchecked {
             // _transactionProposals.length > 0
