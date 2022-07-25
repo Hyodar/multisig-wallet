@@ -378,6 +378,12 @@ contract MultisigWalletTest is Test {
         multisigWallet.replaceMember(members[0], members[1]);
     }
 
+    function testCannotReplaceMemberWithWallet() public {
+        vm.expectRevert("Wallet cannot be added as member");
+        vm.prank(address(multisigWallet));
+        multisigWallet.replaceMember(members[0], address(multisigWallet));
+    }
+
     function testCannotReplaceMemberWithZeroAddress() public {
         vm.expectRevert("Zero address cannot be added as member");
         vm.prank(address(multisigWallet));

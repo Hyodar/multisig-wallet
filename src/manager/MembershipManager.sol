@@ -144,6 +144,8 @@ abstract contract MembershipManager {
     /// @param from The current member to be replaced
     /// @param to The non-member that will replace `from`
     function _replaceMember(address from, address to) internal {
+        require(to != address(this), "Wallet cannot be added as member");
+
         _members.replace(from, to);
 
         emit MemberRemoved(from);
