@@ -10,7 +10,7 @@ An instance of this contract was deployed in the Goerli testnet at [`0xe37eb278b
 
 ## Usage
 
-To be able to build the project, run tests and other utilities, install (foundry)[https://github.com/foundry-rs/foundry].
+To be able to build the project, run tests and other utilities, install [foundry](https://github.com/foundry-rs/foundry).
 
 ### Build
 Build the contracts:
